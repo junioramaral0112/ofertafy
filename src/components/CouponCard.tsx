@@ -31,7 +31,7 @@ export default function CouponCard({ coupon }: { coupon: Coupon }) {
   const style = STORE_STYLES[coupon.provider] ?? STORE_STYLES.shopee
   const logo = STORE_LOGOS[coupon.provider] ?? '🏷️'
 
-  const isExpired = coupon.expiryDate && new Date(coupon.expiryDate) < new Date()
+  const isExpired = !!(coupon.expiryDate && new Date(coupon.expiryDate) < new Date())
 
   const handleCopyAndGo = () => {
     navigator.clipboard.writeText(coupon.code).then(() => {
