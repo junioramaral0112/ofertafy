@@ -9,7 +9,7 @@ interface Coupon {
   description: string
   discountValue: string
   link: string
-  expiryDate?: string | null
+  expiryDate?: Date | string | null
 }
 
 const STORE_STYLES: Record<string, { bg: string; text: string; border: string; label: string }> = {
