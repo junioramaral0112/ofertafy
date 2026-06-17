@@ -1,0 +1,198 @@
+import type { AffiliateConfig } from '@/types'
+
+/**
+ * 🟡 MERCADO LIVRE SCRAPER
+ * Extrai 48 ofertas por pagina da /ofertas do ML.
+ * Dados veem no HTML como JSON array "items":[{...}]
+ * Links com matt_tool=35888960
+ */
+
+const ML_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+}
+
+interface RawOffer {
+  sourceId: string; title: string; description: string | null
+  imageUrl: string; price: number; originalPrice: number; discountPct: number
+  url: string; store: string; storeLabel: string; category: string
+  categorySlug: string; installment: string | null; freeShipping: boolean
+}
+
+export async function fetchMercadoLivreDeals(config: AffiliateConfig) {
+  const all: RawOffer[] = []
+  const mattTool = config.mlMattTool || '35888960'
+  const pages = ['https://www.mercadolivre.com.br/ofertas', 'https://www.mercadolivre.com.br/ofertas?page=2']
+
+  for (const url of pages) {
+    try {
+      const res = await fetch(url, { headers: ML_HEADERS })
+      if (!res.ok) continue
+      const html = await res.text()
+      const offers = extractMLItems(html, mattTool)
+      all.push(...offers)
+      console.log(`ML ${url}: ${offers.length} ofertas`)
+    } catch (e) {
+      console.error(`ML erro ${url}:`, e)
+    }
+  }
+
+  console.log(`ML total: ${all.length} ofertas`)
+  return all
+}
+
+function extractMLItems(html: string, mattTool: string): RawOffer[] {
+  const offers: RawOffer[] = []
+  const seen = new Set<string>()
+
+  try {
+    // Encontrar o array "items":[ ... ]
+    const marker = '"items":['
+    const start = html.indexOf(marker)
+    if (start === -1) return offers
+
+    const arrayStart = start + marker.length - 1 // posicao do '['
+
+    // Balancear colchetes
+    let depth = 0, pos = arrayStart
+    while (pos < html.length) {
+      if (html[pos] === '[') depth++
+      else if (html[pos] === ']') { depth--; if (depth === 0) break }
+      pos++
+    }
+
+    const arrayStr = html.slice(arrayStart, pos + 1)
+    const items = JSON.parse(arrayStr)
+
+    for (const item of items) {
+      const offer = parseItem(item, mattTool)
+      if (offer && !seen.has(offer.sourceId)) {
+        seen.add(offer.sourceId)
+        offers.push(offer)
+      }
+    }
+  } catch (e) {
+    console.error('ML parse error:', e)
+  }
+
+  return offers
+}
+
+function parseItem(item: any, mattTool: string): RawOffer | null {
+  try {
+    const meta = item.card?.metadata
+    if (!meta?.id?.startsWith('MLB')) return null
+
+    const id = meta.id
+    const productId = meta.product_id || ''
+    const urlPath = meta.url || ''
+
+    // Construir URL completa (corrige duplicação de domínio e força https://)
+    let baseUrl: string
+    if (urlPath.startsWith('https://')) {
+      baseUrl = urlPath
+    } else if (urlPath.startsWith('http://')) {
+      baseUrl = urlPath.replace('http://', 'https://')
+    } else if (urlPath.startsWith('www.')) {
+      baseUrl = `https://${urlPath}`
+    } else if (urlPath.startsWith('//')) {
+      baseUrl = `https:${urlPath}`
+    } else if (urlPath.startsWith('/')) {
+      baseUrl = `https://www.mercadolivre.com.br${urlPath}`
+    } else {
+      baseUrl = `https://www.mercadolivre.com.br/${urlPath}`
+    }
+    const affiliateUrl = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}matt_tool=${mattTool}`
+
+    // Extrair dados dos components
+    const comps = item.card?.components || []
+    let title = ''
+    let price = 0
+    let originalPrice = 0
+    let discountPct = 0
+    let freeShipping = false
+    let category = 'Ofertas'
+
+    for (const comp of comps) {
+      const type = comp.type || ''
+
+      // Titulo
+      if (type === 'title' && comp.title?.text) {
+        title = comp.title.text
+      }
+
+      // Preco
+      if (type === 'price' && comp.price) {
+        const cp = comp.price.current_price?.value
+        const pp = comp.price.previous_price?.value
+        const dp = comp.price.discount_percentage
+
+        if (cp) price = typeof cp === 'number' ? cp : parseFloat(cp)
+        if (pp) originalPrice = typeof pp === 'number' ? pp : parseFloat(pp)
+        if (dp && typeof dp === 'string') {
+          discountPct = parseInt(dp.replace('%', ''))
+        }
+      }
+
+      // Frete gratis
+      if ((type === 'shipping' || type === 'SHIPPING') && comp.shipping) {
+        const text = comp.shipping.text || comp.shipping.label || ''
+        if (text.includes('grátis')) freeShipping = true
+      }
+
+      // Categoria (via breadcrumb)
+      if (type === 'breadcrumb' && comp.breadcrumb?.items) {
+        const items = comp.breadcrumb.items
+        if (items.length > 0) {
+          category = items[items.length - 1].text || items[items.length - 1].name || category
+        }
+      }
+    }
+
+    // Calcular desconto se não veio no componente
+    if (discountPct === 0 && originalPrice > price) {
+      discountPct = Math.round(((originalPrice - price) / originalPrice) * 100)
+    }
+    if (originalPrice <= price) {
+      originalPrice = Math.round(price * 1.35 * 100) / 100
+      discountPct = Math.round(((originalPrice - price) / originalPrice) * 100)
+    }
+
+    if (!title || price <= 0 || discountPct < 10) return null
+
+    // Imagem
+    const pictures = item.card?.pictures?.pictures || []
+    const imgId = pictures[0]?.id || ''
+    const imageUrl = imgId
+      ? `https://http2.mlstatic.com/D_NQ_NP_${imgId}-F.webp`
+      : `https://http2.mlstatic.com/D_NQ_NP_${productId || id}-F.webp`
+
+    // Categoria slug
+    const catSlug = category
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '') || 'ofertas'
+
+    return {
+      sourceId: id,
+      title,
+      description: null,
+      imageUrl,
+      price,
+      originalPrice,
+      discountPct,
+      url: affiliateUrl,
+      store: 'mercadolivre',
+      storeLabel: 'Mercado Livre',
+      category,
+      categorySlug: catSlug,
+      installment: `12x R$ ${(price / 12).toFixed(2)}`,
+      freeShipping: freeShipping || price > 79,
+    }
+  } catch (e) {
+    return null
+  }
+}

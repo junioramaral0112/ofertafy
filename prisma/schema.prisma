@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Offer {
+  id            String         @id @default(cuid())
+  title         String
+  description   String?
+  imageUrl      String
+  price         Float
+  originalPrice Float
+  discountPct   Float
+  currency      String         @default("BRL")
+  url           String
+  store         String
+  storeLabel    String
+  category      String
+  categorySlug  String
+  installment   String?
+  freeShipping  Boolean        @default(false)
+  isFlash       Boolean        @default(false)
+  flashEndsAt   DateTime?
+  clicks        Int            @default(0)
+  likes         Int            @default(0)
+  sourceId      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  priceHistory  PriceHistory[]
+
+  @@index([categorySlug])
+  @@index([store])
+  @@index([price])
+  @@index([createdAt])
+  @@index([discountPct])
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  offerId   String
+  offer     Offer    @relation(fields: [offerId], references: [id])
+  price     Float
+  checkedAt DateTime @default(now())
+
+  @@index([offerId, checkedAt])
+}
+
+model SearchTerm {
+  id        String   @id @default(cuid())
+  term      String   @unique
+  count     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NewsletterEmail {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Coupon {
+  id            String    @id @default(cuid())
+  provider      String    // 'amazon', 'mercadolivre', 'magalu', 'shopee'
+  code          String    // ex: 'VALE10', 'GANHEI20'
+  description   String    // ex: 'R$ 20 de desconto em eletrônicos'
+  discountValue String    // ex: '10%', 'R$ 50', 'Frete Grátis'
+  link          String    // URL de afiliado para a página de cupons da loja
+  expiryDate    DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([provider])
+  @@index([isActive])
+  @@index([expiryDate])
+}
