@@ -75,41 +75,37 @@ export default function FlashBanner({ offers }: { offers: OfferData[] }) {
   })()
 
   return (
-    <section className="w-full max-w-[95rem] mx-auto px-4 -mt-8 mb-12">
-      <div className="bg-slate-900 rounded-3xl overflow-hidden shadow-2xl">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-0">
-          {/* ============ LADO ESQUERDO (3/5) ============ */}
-          <div className="lg:col-span-3 flex flex-col justify-center px-6 md:px-10 py-8 lg:py-12">
-            {/* Badge vermelha com ícone de raio */}
-            <div className="inline-flex items-center gap-1.5 bg-red-600 text-white text-xs md:text-sm font-bold px-3 py-1.5 rounded-full w-fit mb-4 animate-pulse-soft">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" className="shrink-0">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-              </svg>
-              RELÂMPAGO
-              <span className="font-normal text-red-200">· TERMINA EM</span>
+    <section className="w-full max-w-7xl mx-auto px-4 -mt-6 mb-8">
+      <div className="bg-slate-900 rounded-2xl overflow-hidden shadow-2xl">
+        <div className="flex flex-col lg:flex-row">
+          {/* ============ LADO ESQUERDO ============ */}
+          <div className="flex-1 flex flex-col justify-center px-5 md:px-8 py-5 lg:py-6 min-w-0">
+            {/* Badge + título na mesma linha em desktop */}
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <span className="inline-flex items-center gap-1 bg-red-600 text-white text-[11px] md:text-xs font-bold px-2 py-0.5 rounded-full animate-pulse-soft shrink-0">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+                RELÂMPAGO
+              </span>
+              <span className="text-[11px] text-slate-500 font-medium">termina em breve</span>
             </div>
 
             {/* Título do produto */}
-            <h2 className="text-xl md:text-2xl lg:text-3xl font-extrabold text-white mb-4 leading-tight line-clamp-2">
+            <h2 className="text-base md:text-lg lg:text-xl font-extrabold text-white mb-2 leading-snug line-clamp-2">
               {offer.title}
             </h2>
 
-            {/* Preços */}
-            <div className="flex items-baseline gap-3 flex-wrap mb-2">
-              <span className="text-xs md:text-sm text-slate-400 line-through">
-                De {formatPrice(offer.originalPrice)}
+            {/* Preços + tags numa linha só */}
+            <div className="flex items-baseline gap-2 flex-wrap mb-1.5">
+              <span className="text-[11px] md:text-xs text-slate-400 line-through">
+                {formatPrice(offer.originalPrice)}
               </span>
-              <span className="text-xl md:text-2xl lg:text-3xl font-extrabold text-white">
-                por {formatPrice(offer.price)}
+              <span className="text-lg md:text-xl lg:text-2xl font-extrabold text-white">
+                {formatPrice(offer.price)}
               </span>
-              <span className="discount-badge text-sm px-3 py-1">
-                -{offer.discountPct}% OFF
+              <span className="discount-badge text-xs px-2 py-0.5">
+                -{offer.discountPct}%
               </span>
-            </div>
-
-            {/* Loja + meta info */}
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 offer.store === 'mercadolivre' ? 'bg-[#FFE600] text-slate-900' :
                 offer.store === 'magalu' ? 'bg-[#0086FF] text-white' :
                 'bg-slate-600 text-white'
@@ -117,17 +113,14 @@ export default function FlashBanner({ offers }: { offers: OfferData[] }) {
                 {offer.storeLabel}
               </span>
               {offer.freeShipping && (
-                <span className="text-xs text-green-400 font-semibold">📦 Frete grátis</span>
-              )}
-              {offer.installment && (
-                <span className="text-xs text-slate-400">{offer.installment}</span>
+                <span className="text-[10px] text-green-400 font-semibold">📦 Grátis</span>
               )}
             </div>
           </div>
 
-          {/* ============ LADO DIREITO (2/5) ============ */}
-          <div className="lg:col-span-2 flex flex-col items-center justify-center px-6 md:px-10 py-8 lg:py-12 bg-slate-800/50 lg:bg-gradient-to-l lg:from-slate-800/90 lg:to-transparent gap-5">
-            {/* Cronômetro — SEMPRE ativo (real ou gerado) */}
+          {/* ============ LADO DIREITO (cronômetro + botão) ============ */}
+          <div className="flex lg:flex-col items-center justify-center gap-3 px-5 md:px-8 py-4 lg:py-6 bg-slate-800/50 lg:bg-gradient-to-l lg:from-slate-800/90 lg:to-transparent lg:border-l lg:border-slate-700/50 shrink-0">
+            {/* Cronômetro */}
             <CountdownTimer endAt={effectiveEndAt} />
 
             {/* Botão Ver agora → */}
@@ -135,32 +128,27 @@ export default function FlashBanner({ offers }: { offers: OfferData[] }) {
               href={sanitizeAffiliateUrl(offer.url, offer.store)}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full max-w-xs text-center bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-8 rounded-2xl transition-colors shadow-lg shadow-red-600/25 text-base md:text-lg"
+              className="text-center bg-red-600 hover:bg-red-700 text-white font-bold py-2 md:py-2.5 px-5 md:px-8 rounded-xl transition-colors shadow-lg shadow-red-600/25 text-sm md:text-base whitespace-nowrap"
             >
               Ver agora →
             </a>
 
-            {/* Indicadores de paginação */}
+            {/* Indicadores */}
             {candidates.length > 1 && (
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 {candidates.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setCurrentIndex(i)}
-                    className={`w-2.5 h-2.5 rounded-full transition-all ${
+                    className={`w-2 h-2 rounded-full transition-all ${
                       i === currentIndex % candidates.length
-                        ? 'bg-white scale-125 shadow-sm'
+                        ? 'bg-white scale-110'
                         : 'bg-slate-600 hover:bg-slate-500'
                     }`}
                   />
                 ))}
               </div>
             )}
-
-            {/* Contador de ofertas */}
-            <p className="text-[10px] text-slate-500">
-              {candidates.length} ofertas em destaque
-            </p>
           </div>
         </div>
       </div>
@@ -187,15 +175,12 @@ function CountdownTimer({ endAt }: { endAt: Date }) {
   // ⚠️ Enquanto não monta no cliente, mostra skeleton (evita mismatch de hidratação)
   if (!isMounted) {
     return (
-      <div className="text-center">
-        <p className="text-slate-400 text-xs mb-2">Termina em</p>
-        <div className="flex items-center gap-2 md:gap-3">
-          <TimeBox value="--" label="h" />
-          <span className="text-slate-500 text-xl md:text-2xl font-light select-none">:</span>
-          <TimeBox value="--" label="min" />
-          <span className="text-slate-500 text-xl md:text-2xl font-light select-none">:</span>
-          <TimeBox value="--" label="seg" />
-        </div>
+      <div className="flex items-center gap-1.5">
+        <TimeBox value="--" />
+        <span className="text-slate-500 text-sm font-light">:</span>
+        <TimeBox value="--" />
+        <span className="text-slate-500 text-sm font-light">:</span>
+        <TimeBox value="--" />
       </div>
     )
   }
@@ -203,30 +188,24 @@ function CountdownTimer({ endAt }: { endAt: Date }) {
   const remaining = calcRemaining(endAt, now)
 
   if (remaining.total <= 0) {
-    return <p className="text-red-400 font-bold text-sm">⚡ Oferta encerrada!</p>
+    return <p className="text-red-400 font-bold text-xs">⚡ Encerrada!</p>
   }
 
   return (
-    <div className="text-center">
-      <p className="text-slate-400 text-xs mb-2">Termina em</p>
-      <div className="flex items-center gap-2 md:gap-3">
-        <TimeBox value={String(remaining.hours).padStart(2, '0')} label="h" />
-        <span className="text-slate-500 text-xl md:text-2xl font-light select-none">:</span>
-        <TimeBox value={String(remaining.minutes).padStart(2, '0')} label="min" />
-        <span className="text-slate-500 text-xl md:text-2xl font-light select-none">:</span>
-        <TimeBox value={String(remaining.seconds).padStart(2, '0')} label="seg" />
-      </div>
+    <div className="flex items-center gap-1.5">
+      <TimeBox value={String(remaining.hours).padStart(2, '0')} />
+      <span className="text-slate-500 text-sm font-light select-none">:</span>
+      <TimeBox value={String(remaining.minutes).padStart(2, '0')} />
+      <span className="text-slate-500 text-sm font-light select-none">:</span>
+      <TimeBox value={String(remaining.seconds).padStart(2, '0')} />
     </div>
   )
 }
 
-function TimeBox({ value, label }: { value: string; label: string }) {
+function TimeBox({ value }: { value: string }) {
   return (
-    <div className="flex flex-col items-center">
-      <div className="bg-slate-700 border border-slate-600 rounded-xl w-14 md:w-18 h-14 md:h-18 flex items-center justify-center text-2xl md:text-3xl font-mono font-bold text-white shadow-inner">
-        {value}
-      </div>
-      <span className="text-[10px] md:text-xs text-slate-400 mt-1.5">{label}</span>
+    <div className="bg-slate-700 border border-slate-600 rounded-lg w-9 md:w-11 h-8 md:h-9 flex items-center justify-center text-sm md:text-base font-mono font-bold text-white shadow-inner">
+      {value}
     </div>
   )
 }
