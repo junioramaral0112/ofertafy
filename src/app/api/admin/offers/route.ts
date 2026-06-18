@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getAuthFromCookie } from '@/lib/auth'
+
+/** Verifica autenticação antes de qualquer operação */
+async function checkAuth(): Promise<boolean> {
+  const username = await getAuthFromCookie()
+  return !!username
+}
 
 // GET /api/admin/offers — listar todas as ofertas
 export async function GET() {
+  if (!(await checkAuth())) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
   try {
     const offers = await prisma.offer.findMany({
       orderBy: { createdAt: 'desc' },
@@ -17,6 +27,9 @@ export async function GET() {
 
 // POST /api/admin/offers — criar nova oferta
 export async function POST(request: NextRequest) {
+  if (!(await checkAuth())) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
   try {
     const body = await request.json()
 
@@ -59,6 +72,9 @@ export async function POST(request: NextRequest) {
 
 // PUT /api/admin/offers — atualizar oferta existente
 export async function PUT(request: NextRequest) {
+  if (!(await checkAuth())) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
   try {
     const body = await request.json()
 
@@ -98,6 +114,9 @@ export async function PUT(request: NextRequest) {
 
 // DELETE /api/admin/offers?id=xxx — deletar oferta
 export async function DELETE(request: NextRequest) {
+  if (!(await checkAuth())) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
   try {
     const id = request.nextUrl.searchParams.get('id')
     if (!id) {
