@@ -1,4 +1,4 @@
-// Script standalone para buscar ofertas
+// Script standalone para buscar ofertas + cupons
 // Uso: npx tsx src/scripts/fetch-offers.ts
 
 import { PrismaClient } from '@prisma/client'
@@ -6,6 +6,7 @@ import { fetchMercadoLivreDeals } from '../lib/affiliates/mercadolivre'
 import { fetchMagaluDeals } from '../lib/affiliates/magalu'
 import { fetchAmazonDeals } from '../lib/affiliates/amazon'
 import { fetchShopeeDeals } from '../lib/affiliates/shopee'
+import { fetchAllCoupons, saveCoupons } from '../lib/affiliates/coupons'
 
 const prisma = new PrismaClient()
 
@@ -57,6 +58,18 @@ async function main() {
 
   console.log(`🟡 ML: ${mlDeals.length} | 🔵 Magalu: ${magaluDeals.length} | 🟠 Amazon: ${amazonDeals.length} | 🔴 Shopee: ${shopeeDeals.length}`)
   console.log(`📊 ${added} novas ofertas, ${updated} atualizadas`)
+
+  // ── Cupons de desconto ────────────────────────────────
+  console.log('')
+  console.log('🎫 Buscando cupons de desconto...')
+  try {
+    const coupons = await fetchAllCoupons(config)
+    const result = await saveCoupons(coupons)
+    console.log(`🎫 Cupons: ${result.added} novos, ${result.updated} atualizados`)
+  } catch (e: any) {
+    console.error('🎫 Erro nos cupons:', e.message?.slice(0, 120))
+  }
+
   console.log('✅ ML (matt_tool) | Magalu | Amazon (tag) | Shopee (affiliate_id)')
 }
 
