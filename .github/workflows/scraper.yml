@@ -1,0 +1,43 @@
+name: 🔍 Scraper de Ofertas
+
+on:
+  schedule:
+    - cron: '0 * * * *'   # toda hora cheia
+
+  workflow_dispatch:       # permite rodar manualmente
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  SHOPEE_APP_ID: ${{ secrets.SHOPEE_APP_ID }}
+  SHOPEE_SECRET: ${{ secrets.SHOPEE_SECRET }}
+  ML_MATT_TOOL: ${{ secrets.ML_MATT_TOOL }}
+  MAGALU_STORE_ID: ${{ secrets.MAGALU_STORE_ID }}
+  AMAZON_ASSOCIATE_TAG: ${{ secrets.AMAZON_ASSOCIATE_TAG }}
+  AMAZON_ACCESS_KEY: ${{ secrets.AMAZON_ACCESS_KEY }}
+  AMAZON_SECRET_KEY: ${{ secrets.AMAZON_SECRET_KEY }}
+  CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+jobs:
+  scrape:
+    name: Buscar ofertas (ML + Magalu + Shopee + Amazon)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar Prisma Client
+        run: npx prisma generate
+
+      - name: Rodar scraper
+        run: npx tsx src/scripts/fetch-offers.ts
