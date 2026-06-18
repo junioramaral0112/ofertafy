@@ -139,7 +139,13 @@ export async function getHomeOffers(): Promise<{ flashDeals: any[]; topOffers: a
   ])
 
   const data = { flashDeals, topOffers, recentOffers }
-  setCache(cacheKey, data, 300)
+
+  // ⚠️ Só cacheia se houver dados reais (evita cache vazio do build)
+  const hasData = flashDeals.length > 0 || topOffers.length > 0 || recentOffers.length > 0
+  if (hasData) {
+    setCache(cacheKey, data, 300)
+  }
+
   return data
 }
 
@@ -253,6 +259,9 @@ export async function getStats(): Promise<{ totalOffers: number; totalClicks: nu
     stores: stores.map((s) => ({ store: s.store, count: s._count })),
   }
 
-  setCache(cacheKey, stats, 600)
+  // ⚠️ Só cacheia se houver dados reais
+  if (stats.totalOffers > 0) {
+    setCache(cacheKey, stats, 600)
+  }
   return stats
 }

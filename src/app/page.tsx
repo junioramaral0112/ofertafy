@@ -9,6 +9,7 @@ import Link from 'next/link'
 import { CATEGORIES } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default async function HomePage() {
   const data = await getHomeOffers().catch(() => ({ flashDeals: [] as any[], topOffers: [] as any[], recentOffers: [] as any[] }))
