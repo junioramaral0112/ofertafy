@@ -92,6 +92,7 @@ function StoreBadge({ store }: { store: string }) {
     magalu:        'bg-[#0086FF] text-white',
     shopee:        'bg-[#EE4D2D] text-white',
     amazon:        'bg-[#FF9900] text-slate-900',
+    tiktok:        'bg-black text-white',
   }
 
   const labels: Record<string, string> = {
@@ -99,6 +100,7 @@ function StoreBadge({ store }: { store: string }) {
     magalu:        'Magalu',
     shopee:        'Shopee',
     amazon:        'Amazon',
+    tiktok:        'TikTok Shop',
   }
 
   return (

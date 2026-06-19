@@ -58,6 +58,10 @@ export interface AffiliateConfig {
   shopeeAppId?: string
   shopeeSecret?: string
 
+  // TikTok Shop (API de Afiliados)
+  tiktokAffiliateId?: string
+  tiktokAccessToken?: string
+
   // Amazon (adormecida — ativa quando preencher)
   amazonAssociateTag?: string
   amazonAccessKey?: string

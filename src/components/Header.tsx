@@ -35,7 +35,7 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
       <div className="gradient-primary text-white text-xs py-1.5 px-4 text-center">
-        🔥 As melhores ofertas do Mercado Livre, Magalu, Amazon e Shopee em um só lugar!
+        🔥 As melhores ofertas do Mercado Livre, Magalu, Amazon, Shopee e TikTok Shop em um só lugar!
       </div>
 
       <div className="max-w-7xl mx-auto px-4">

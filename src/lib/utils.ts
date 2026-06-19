@@ -69,6 +69,7 @@ export function generateAffiliateUrl(
     magaluStoreId: string
     shopeeAppId?: string
     amazonAssociateTag?: string
+    tiktokAffiliateId?: string
   }
 ): string {
   const url = new URL(productUrl)
@@ -102,6 +103,16 @@ export function generateAffiliateUrl(
       // ADORMECIDA: só ativa quando a tag for preenchida
       if (config.amazonAssociateTag) {
         url.searchParams.set('tag', config.amazonAssociateTag)
+      }
+      break
+
+    case 'tiktok':
+      // Injeta u_code de afiliado + parâmetros UTM
+      if (config.tiktokAffiliateId) {
+        url.searchParams.set('u_code', config.tiktokAffiliateId)
+        url.searchParams.set('utm_source', 'copy')
+        url.searchParams.set('utm_medium', 'android')
+        url.searchParams.set('utm_campaign', 'client_share')
       }
       break
   }
@@ -161,6 +172,12 @@ export function sanitizeAffiliateUrl(rawUrl: string, store: string): string {
   if (store === 'shopee' && !url.includes('affiliate_id=')) {
     // ID de afiliado via API oficial — configurado no .env (SHOPEE_APP_ID)
     url = url.includes('?') ? `${url}&affiliate_id=${process.env.SHOPEE_APP_ID || '18355150568'}` : `${url}?affiliate_id=${process.env.SHOPEE_APP_ID || '18355150568'}`
+  }
+  if (store === 'tiktok' && !url.includes('u_code=')) {
+    const uCode = process.env.TIKTOK_AFFILIATE_ID || 'eif04je11e51h7'
+    url = url.includes('?')
+      ? `${url}&u_code=${uCode}&utm_source=copy&utm_medium=android&utm_campaign=client_share`
+      : `${url}?u_code=${uCode}&utm_source=copy&utm_medium=android&utm_campaign=client_share`
   }
 
   return url
@@ -226,4 +243,5 @@ export const STORES = [
   { name: 'Magalu',        slug: 'magalu',        color: '#0086FF', active: true },
   { name: 'Amazon',        slug: 'amazon',        color: '#FF9900', active: true },
   { name: 'Shopee',        slug: 'shopee',        color: '#EE4D2D', active: true },
+  { name: 'TikTok Shop',   slug: 'tiktok',        color: '#000000', active: true },
 ] as const

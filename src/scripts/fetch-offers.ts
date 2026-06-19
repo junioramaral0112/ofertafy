@@ -6,6 +6,7 @@ import { fetchMercadoLivreDeals } from '../lib/affiliates/mercadolivre'
 import { fetchMagaluDeals } from '../lib/affiliates/magalu'
 import { fetchAmazonDeals } from '../lib/affiliates/amazon'
 import { fetchShopeeDeals } from '../lib/affiliates/shopee'
+import { fetchTikTokDeals } from '../lib/affiliates/tiktok'
 import { fetchAllCoupons, saveCoupons } from '../lib/affiliates/coupons'
 
 const prisma = new PrismaClient()
@@ -15,6 +16,8 @@ const config = {
   magaluStoreId: process.env.MAGALU_STORE_ID || 'ofertafy',
   shopeeAppId: process.env.SHOPEE_APP_ID || '',
   shopeeSecret: process.env.SHOPEE_SECRET || '',
+  tiktokAffiliateId: process.env.TIKTOK_AFFILIATE_ID || '',
+  tiktokAccessToken: process.env.TIKTOK_ACCESS_TOKEN || '',
   amazonAssociateTag: process.env.AMAZON_ASSOCIATE_TAG || 'ofertafy00-20',
   amazonAccessKey: process.env.AMAZON_ACCESS_KEY || '',
   amazonSecretKey: process.env.AMAZON_SECRET_KEY || '',
@@ -23,18 +26,19 @@ const config = {
 async function main() {
   console.log('🔍 Buscando ofertas...')
   console.log(`⏰ ${new Date().toLocaleString('pt-BR')}`)
-  console.log('🟡 ML | 🔵 Magalu | 🟠 Amazon | 🔴 Shopee')
+  console.log('🟡 ML | 🔵 Magalu | 🟠 Amazon | 🔴 Shopee | 🎵 TikTok')
   console.log('')
 
-  const [mlDeals, magaluDeals, amazonDeals, shopeeDeals] = await Promise.all([
+  const [mlDeals, magaluDeals, amazonDeals, shopeeDeals, tiktokDeals] = await Promise.all([
     fetchMercadoLivreDeals(config).catch((e) => { console.error('ML:', e.message); return [] }),
     fetchMagaluDeals(config).catch((e) => { console.error('Magalu:', e.message); return [] }),
     fetchAmazonDeals(config).catch((e) => { console.error('Amazon:', e.message); return [] }),
     fetchShopeeDeals(config).catch((e) => { console.error('Shopee:', e.message); return [] }),
+    fetchTikTokDeals(config).catch((e) => { console.error('TikTok:', e.message); return [] }),
   ])
 
   let added = 0, updated = 0
-  const allDeals = [...mlDeals, ...magaluDeals, ...shopeeDeals, ...amazonDeals]
+  const allDeals = [...mlDeals, ...magaluDeals, ...shopeeDeals, ...amazonDeals, ...tiktokDeals]
 
   for (const deal of allDeals) {
     if (!deal.sourceId || !deal.title) continue
@@ -56,7 +60,7 @@ async function main() {
     }
   }
 
-  console.log(`🟡 ML: ${mlDeals.length} | 🔵 Magalu: ${magaluDeals.length} | 🟠 Amazon: ${amazonDeals.length} | 🔴 Shopee: ${shopeeDeals.length}`)
+  console.log(`🟡 ML: ${mlDeals.length} | 🔵 Magalu: ${magaluDeals.length} | 🟠 Amazon: ${amazonDeals.length} | 🔴 Shopee: ${shopeeDeals.length} | 🎵 TikTok: ${tiktokDeals.length}`)
   console.log(`📊 ${added} novas ofertas, ${updated} atualizadas`)
 
   // ── Cupons de desconto ────────────────────────────────

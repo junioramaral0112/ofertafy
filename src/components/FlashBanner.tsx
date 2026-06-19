@@ -108,6 +108,7 @@ export default function FlashBanner({ offers }: { offers: OfferData[] }) {
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                 offer.store === 'mercadolivre' ? 'bg-[#FFE600] text-slate-900' :
                 offer.store === 'magalu' ? 'bg-[#0086FF] text-white' :
+                offer.store === 'tiktok' ? 'bg-black text-white' :
                 'bg-slate-600 text-white'
               }`}>
                 {offer.storeLabel}

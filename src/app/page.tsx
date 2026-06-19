@@ -43,7 +43,7 @@ export default async function HomePage() {
           <div className="flex justify-center gap-6 md:gap-10 text-center">
             <div><p className="text-xl md:text-2xl font-extrabold">{stats.totalOffers.toLocaleString()}</p><p className="text-[10px] md:text-xs text-white/60">Ofertas ativas</p></div>
             <div><p className="text-xl md:text-2xl font-extrabold">{stats.totalClicks.toLocaleString()}</p><p className="text-[10px] md:text-xs text-white/60">Economias</p></div>
-            <div><p className="text-xl md:text-2xl font-extrabold">4</p><p className="text-[10px] md:text-xs text-white/60">Lojas</p></div>
+            <div><p className="text-xl md:text-2xl font-extrabold">5</p><p className="text-[10px] md:text-xs text-white/60">Lojas</p></div>
           </div>
         </div>
       </section>

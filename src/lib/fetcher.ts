@@ -4,6 +4,7 @@ import { fetchMercadoLivreDeals } from './affiliates/mercadolivre'
 import { fetchMagaluDeals } from './affiliates/magalu'
 import { fetchAmazonDeals } from './affiliates/amazon'
 import { fetchShopeeDeals } from './affiliates/shopee'
+import { fetchTikTokDeals } from './affiliates/tiktok'
 import type { FetchResult } from '@/types'
 
 function getAffiliateConfig() {
@@ -14,6 +15,12 @@ function getAffiliateConfig() {
     // Shopee API oficial
     shopeeAppId: process.env.SHOPEE_APP_ID || '',
     shopeeSecret: process.env.SHOPEE_SECRET || '',
+
+    // TikTok Shop
+    tiktokAffiliateId: process.env.TIKTOK_AFFILIATE_ID || '',
+    tiktokAccessToken: process.env.TIKTOK_ACCESS_TOKEN || '',
+
+    // Amazon
     amazonAssociateTag: process.env.AMAZON_ASSOCIATE_TAG || '',
     amazonAccessKey: process.env.AMAZON_ACCESS_KEY || '',
     amazonSecretKey: process.env.AMAZON_SECRET_KEY || '',
@@ -27,11 +34,12 @@ export async function fetchAllDeals(): Promise<FetchResult[]> {
   const config = getAffiliateConfig()
   const results: FetchResult[] = []
 
-  const [mlDeals, magaluDeals, amazonDeals, shopeeDeals] = await Promise.all([
+  const [mlDeals, magaluDeals, amazonDeals, shopeeDeals, tiktokDeals] = await Promise.all([
     fetchMercadoLivreDeals(config).catch((e) => { console.error('ML:', e); return [] }),
     fetchMagaluDeals(config).catch((e) => { console.error('Magalu:', e); return [] }),
     fetchAmazonDeals(config).catch((e) => { console.error('Amazon:', e); return [] }),
     fetchShopeeDeals(config).catch((e) => { console.error('Shopee:', e); return [] }),
+    fetchTikTokDeals(config).catch((e) => { console.error('TikTok:', e); return [] }),
   ])
 
   // Processar e salvar no banco
@@ -89,14 +97,15 @@ export async function fetchAllDeals(): Promise<FetchResult[]> {
     return { store: storeLabel, offersFound: deals.length, offersAdded: added, offersUpdated: updated, errors: errors.slice(0, 5) }
   }
 
-  const [mlResult, magaluResult, amazonResult, shopeeResult] = await Promise.all([
+  const [mlResult, magaluResult, amazonResult, shopeeResult, tiktokResult] = await Promise.all([
     processStore(mlDeals, 'Mercado Livre'),
     processStore(magaluDeals, 'Magalu'),
     processStore(amazonDeals, 'Amazon'),
     processStore(shopeeDeals, 'Shopee'),
+    processStore(tiktokDeals, 'TikTok Shop'),
   ])
 
-  results.push(mlResult, magaluResult, amazonResult, shopeeResult)
+  results.push(mlResult, magaluResult, amazonResult, shopeeResult, tiktokResult)
 
   return results
 }
