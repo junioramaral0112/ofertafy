@@ -1,17 +1,26 @@
+import type { Metadata } from 'next'
 import { getOffersByCategory } from '@/lib/fetcher'
 import OfferGrid from '@/components/OfferGrid'
+import Breadcrumbs from '@/components/Breadcrumbs'
 import { CATEGORIES } from '@/lib/utils'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string }> }
 
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const cat = CATEGORIES.find((c) => c.slug === slug)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ofertafy.com.br'
   return {
-    title: `${cat?.name || 'Categoria'} - Ofertas e Promocoes | ofertaFy`,
-    description: `As melhores ofertas de ${cat?.name || slug} no Mercado Livre, Shopee e Amazon. Compare precos e economize!`,
+    title: `${cat?.name || 'Categoria'} — Melhores Ofertas e Promoções`,
+    description: `As melhores ofertas de ${cat?.name || slug} no Mercado Livre, Magalu, Shopee e Amazon. Compare preços, cupons e economize! Atualizado a cada hora.`,
+    alternates: { canonical: `${siteUrl}/categoria/${slug}` },
+    openGraph: {
+      title: `${cat?.name} — Ofertas e Promoções`,
+      description: `Encontre as melhores ofertas de ${cat?.name || slug} com até 90% OFF. Preços atualizados.`,
+      url: `/categoria/${slug}`,
+    },
   }
 }
 
@@ -29,11 +38,7 @@ export default async function CategoriaPage({ params, searchParams }: Props) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="text-sm text-slate-400 mb-6">
-        <Link href="/" className="hover:text-primary">Início</Link>
-        <span className="mx-2">›</span>
-        <span className="text-slate-600 font-medium">{cat.name}</span>
-      </div>
+      <Breadcrumbs items={[{ label: 'Início', href: '/' }, { label: cat.name }]} />
 
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">{cat.name}</h1>
