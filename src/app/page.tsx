@@ -1,7 +1,7 @@
+import type { Metadata } from 'next'
 import { getHomeOffers, getStats } from '@/lib/fetcher'
 import OfferGrid from '@/components/OfferGrid'
 import FlashBanner from '@/components/FlashBanner'
-import FlashDeals from '@/components/FlashDeals'
 import TopOffers from '@/components/TopOffers'
 import SearchBar from '@/components/SearchBar'
 import NewsletterForm from '@/components/NewsletterForm'
@@ -10,6 +10,19 @@ import { CATEGORIES } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
+
+export const metadata: Metadata = {
+  title: 'As Melhores Ofertas em um Só Lugar — Compare Preços e Economize',
+  description:
+    'Encontre as melhores promoções do Mercado Livre, Magalu, Shopee e Amazon. Ofertas atualizadas a cada hora com links de afiliado. Cupons de desconto exclusivos!',
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'Ofertafy — Compare Preços e Economize',
+    description:
+      'Milhares de ofertas do Mercado Livre, Magalu, Shopee e Amazon em um só lugar. Preços atualizados a cada hora.',
+    url: '/',
+  },
+}
 
 export default async function HomePage() {
   const data = await getHomeOffers().catch(() => ({ flashDeals: [] as any[], topOffers: [] as any[], recentOffers: [] as any[] }))

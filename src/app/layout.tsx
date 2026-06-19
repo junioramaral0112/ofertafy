@@ -1,23 +1,107 @@
-import type { Metadata } from "next"
-import "./globals.css"
-import Header from "@/components/Header"
-import Footer from "@/components/Footer"
+import type { Metadata } from 'next'
+import './globals.css'
+import Header from '@/components/Header'
+import Footer from '@/components/Footer'
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ofertafy.com.br'
+const SITE_NAME = 'Ofertafy'
+const SITE_DESCRIPTION =
+  'As melhores ofertas do Mercado Livre, Magalu, Shopee e Amazon em um só lugar. Compare preços, histórico e cupons de desconto atualizados.'
 
 export const metadata: Metadata = {
-  title: "ofertaFy - As Melhores Ofertas em um Só Lugar",
-  description: "Encontre as melhores ofertas do Mercado Livre, Shopee e Amazon. Compare preços, acompanhe o histórico e economize! Links de afiliado.",
-  keywords: "ofertas, promoções, desconto, mercado livre, shopee, amazon, comparar preços, cupons",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} - As Melhores Ofertas em um Só Lugar`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  keywords: [
+    'ofertas',
+    'promoções',
+    'desconto',
+    'mercado livre',
+    'magalu',
+    'shopee',
+    'amazon',
+    'comparar preços',
+    'cupons',
+    'economizar',
+    'black friday',
+    'promoção do dia',
+  ],
+  authors: [{ name: 'Ofertafy' }],
+  creator: 'Ofertafy',
+  publisher: 'Ofertafy',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   openGraph: {
-    title: "ofertaFy - Ofertas e Promoções",
-    description: "As melhores ofertas do Mercado Livre, Shopee e Amazon em um só lugar.",
-    type: "website",
-    locale: "pt_BR",
+    type: 'website',
+    locale: 'pt_BR',
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} - As Melhores Ofertas em um Só Lugar`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    images: [
+      {
+        url: `${SITE_URL}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: SITE_NAME,
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${SITE_NAME} - Ofertas e Promoções`,
+    description: SITE_DESCRIPTION,
+    images: [`${SITE_URL}/og-image.png`],
+  },
+  alternates: {
+    canonical: SITE_URL,
+  },
+  verification: {
+    google: process.env.GOOGLE_VERIFICATION,
   },
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="pt-BR" className="h-full">
+      <head>
+        {/* JSON-LD: Organization */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: 'Ofertafy',
+              url: SITE_URL,
+              description: SITE_DESCRIPTION,
+              sameAs: ['https://www.instagram.com/ofertafy', 'https://www.tiktok.com/@ofertafy'],
+            }),
+          }}
+        />
+        {/* Preconnect para domínios externos */}
+        <link rel="preconnect" href="https://http2.mlstatic.com" />
+        <link rel="preconnect" href="https://cf.shopee.com.br" />
+        <link rel="preconnect" href="https://m.media-amazon.com" />
+        {/* DNS prefetch para analytics */}
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+      </head>
       <body className="min-h-full flex flex-col bg-slate-50">
         <Header />
         <main className="flex-1">{children}</main>
