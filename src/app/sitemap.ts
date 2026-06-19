@@ -1,27 +1,51 @@
 import type { MetadataRoute } from 'next'
 import { CATEGORIES, STORES } from '@/lib/utils'
+import { prisma } from '@/lib/prisma'
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://ofertafy.com.br'
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ofertafy.com.br'
+  const now = new Date()
 
-  const staticRoutes = [
-    { url: baseUrl, lastModified: new Date(), changeFrequency: 'hourly' as const, priority: 1 },
-    { url: `${baseUrl}/busca`, lastModified: new Date(), changeFrequency: 'always' as const, priority: 0.9 },
+  // ── Rotas estáticas ──────────────────────────────
+  const staticRoutes: MetadataRoute.Sitemap = [
+    { url: baseUrl, lastModified: now, changeFrequency: 'hourly', priority: 1 },
+    { url: `${baseUrl}/busca`, lastModified: now, changeFrequency: 'always', priority: 0.9 },
+    { url: `${baseUrl}/cupons`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
   ]
 
+  // ── Categorias ───────────────────────────────────
   const categoryRoutes = CATEGORIES.map((cat) => ({
     url: `${baseUrl}/categoria/${cat.slug}`,
-    lastModified: new Date(),
+    lastModified: now,
     changeFrequency: 'hourly' as const,
     priority: 0.8,
   }))
 
+  // ── Lojas ────────────────────────────────────────
   const storeRoutes = STORES.map((store) => ({
     url: `${baseUrl}/loja/${store.slug}`,
-    lastModified: new Date(),
+    lastModified: now,
     changeFrequency: 'hourly' as const,
     priority: 0.8,
   }))
 
-  return [...staticRoutes, ...categoryRoutes, ...storeRoutes]
+  // ── Produtos (top 100 por desconto) ──────────────
+  let productRoutes: MetadataRoute.Sitemap = []
+  try {
+    const topOffers = await prisma.offer.findMany({
+      select: { id: true, updatedAt: true },
+      orderBy: { discountPct: 'desc' },
+      take: 500,
+    })
+    productRoutes = topOffers.map((o) => ({
+      url: `${baseUrl}/produto/${o.id}`,
+      lastModified: o.updatedAt,
+      changeFrequency: 'daily' as const,
+      priority: 0.6,
+    }))
+  } catch {
+    // DB não disponível durante build — fallback vazio
+  }
+
+  return [...staticRoutes, ...categoryRoutes, ...storeRoutes, ...productRoutes]
 }
