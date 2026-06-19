@@ -2,10 +2,17 @@ import { prisma } from './prisma'
 import { getCached, setCache, invalidateCache } from './cache'
 import { fetchMercadoLivreDeals } from './affiliates/mercadolivre'
 import { fetchMagaluDeals } from './affiliates/magalu'
-import { fetchAmazonDeals } from './affiliates/amazon'
 import { fetchShopeeDeals } from './affiliates/shopee'
 import { fetchTikTokDeals } from './affiliates/tiktok'
 import type { FetchResult } from '@/types'
+
+// ⚠️ Amazon usa Puppeteer — import dinâmico para evitar
+// que o Next.js tente fazer bundle no build da Vercel
+const fetchAmazonDeals = async (config: any) => {
+  if (typeof window !== 'undefined') return [] // nunca roda no browser
+  const { fetchAmazonDeals: fn } = await import('./affiliates/amazon')
+  return fn(config)
+}
 
 function getAffiliateConfig() {
   return {
