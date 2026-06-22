@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function AdminLoginPage() {
+export default function LoginPage() {
   const router = useRouter()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -40,7 +40,6 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-sm">
-        {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-extrabold text-slate-900 mb-1">
             🔒 Painel Admin
@@ -48,7 +47,6 @@ export default function AdminLoginPage() {
           <p className="text-sm text-slate-500">Faça login para gerenciar as ofertas</p>
         </div>
 
-        {/* Card */}
         <form
           onSubmit={handleLogin}
           className="bg-white rounded-2xl shadow-lg border border-slate-200 p-6 space-y-4"
@@ -98,10 +96,6 @@ export default function AdminLoginPage() {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-
-        <p className="text-center text-xs text-slate-400 mt-6">
-          ofertafy.com.br — Painel Administrativo
-        </p>
       </div>
     </div>
   )
