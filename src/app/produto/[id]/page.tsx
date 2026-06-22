@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: `De ${formatPrice(offer.originalPrice)} por ${formatPrice(offer.price)} na ${offer.storeLabel}. ${offer.discountPct}% OFF!`,
       images: [offer.imageUrl],
       url: `/produto/${offer.id}`,
-      type: 'product',
+      type: 'website',
     },
     twitter: {
       card: 'summary_large_image',
