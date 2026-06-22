@@ -443,9 +443,52 @@ const STORE_THEME: Record<string, { bg: string; text: string; badge: string; log
 // ── Componente Marketing Modal ──────────────────────────
 function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void }) {
   const [format, setFormat] = useState<'static' | 'carrossel' | 'reels'>('static')
+  const [copying, setCopying] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
   const theme = STORE_THEME[offer.store] ?? STORE_THEME.shopee
 
   const copy = generateCopy(offer, format)
+
+  /** Renderiza o card como imagem PNG + texto e copia ambos juntos */
+  async function handleCopyCardAndText() {
+    if (!cardRef.current) return
+    setCopying(true)
+
+    try {
+      // 1. Renderizar o card HTML → canvas (imagem PNG)
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+      })
+
+      // 2. Converter canvas → Blob PNG
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/png', 0.95),
+      )
+
+      if (!blob) throw new Error('Falha ao gerar imagem')
+
+      // 3. Copiar imagem + texto simultaneamente
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': blob,
+          'text/plain': new Blob([copy], { type: 'text/plain' }),
+        }),
+      ])
+
+      setCopied(true)
+      setTimeout(() => setCopied(false), 3000)
+    } catch {
+      // Fallback: copia só o texto se imagem falhar
+      try { await navigator.clipboard.writeText(copy); setCopied(true); setTimeout(() => setCopied(false), 3000) } catch { /* silencioso */ }
+    }
+
+    setCopying(false)
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-6 pb-10 overflow-y-auto" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
@@ -463,8 +506,8 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
               📸 Preview do Card
             </p>
 
-            {/* Card — formato Stories 9:16 */}
-            <div className="w-[260px] bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200"
+            {/* Card — formato Stories 9:16 (ref para html2canvas) */}
+            <div ref={cardRef} className="w-[260px] bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200"
                  style={{ aspectRatio: '9/16' }}>
               {/* Imagem do produto */}
               <div className="relative w-full bg-slate-100" style={{ height: '55%' }}>
@@ -556,16 +599,27 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
               {copy}
             </div>
 
-            {/* Botão copiar */}
+            {/* Botão copiar IMAGEM + TEXTO */}
             <button
-              onClick={() => { navigator.clipboard.writeText(copy) }}
-              className="w-full py-2.5 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-colors text-sm flex items-center justify-center gap-2"
+              onClick={handleCopyCardAndText}
+              disabled={copying}
+              className={`w-full py-2.5 font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-2 ${
+                copied
+                  ? 'bg-green-500 text-white'
+                  : 'bg-slate-900 text-white hover:bg-slate-800'
+              }`}
             >
-              📋 Copiar Copy
+              {copying ? (
+                <>⏳ Renderizando imagem...</>
+              ) : copied ? (
+                <>✅ Card + Copy copiados! Cole no WhatsApp/Instagram</>
+              ) : (
+                <>📋 Copiar Card (Imagem + Texto)</>
+              )}
             </button>
 
             <p className="text-[10px] text-slate-400 text-center">
-              Cole no Instagram, TikTok ou WhatsApp + print do card ao lado
+              Ctrl+V no WhatsApp, Instagram ou TikTok — a imagem e o texto colam juntos!
             </p>
           </div>
         </div>
