@@ -66,6 +66,7 @@ export default function AdminPage() {
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [scraping, setScraping] = useState(false)
+  const [marketingOffer, setMarketingOffer] = useState<Offer | null>(null)
 
   useEffect(() => { loadOffers() }, [])
 
@@ -273,7 +274,11 @@ export default function AdminPage() {
                     </td>
                     <td className="px-4 py-3 text-slate-500">{offer.category}</td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-1.5 flex-wrap">
+                        <button onClick={() => setMarketingOffer(offer)}
+                          className="px-2 py-1.5 text-xs font-medium rounded-lg bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors">
+                          📢 Marketing
+                        </button>
                         <button onClick={() => openEdit(offer)}
                           className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
                           ✏️ Editar
@@ -291,6 +296,9 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Marketing */}
+      {marketingOffer && <MarketingModal offer={marketingOffer} onClose={() => setMarketingOffer(null)} />}
 
       {/* Modal Form */}
       {showForm && (
@@ -421,4 +429,96 @@ export default function AdminPage() {
       )}
     </div>
   )
+}
+
+// ── Componente Marketing Modal ──────────────────────────
+function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void }) {
+  const [format, setFormat] = useState<'static' | 'carrossel' | 'reels'>('static')
+
+  const copy = generateCopy(offer, format)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 pb-10 overflow-y-auto" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 animate-fade-in">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <h2 className="text-lg font-bold text-slate-900">📢 Gerar Conteúdo de Marketing</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Info do produto */}
+          <div className="bg-slate-50 rounded-xl p-3 text-sm">
+            <p className="font-semibold text-slate-800 line-clamp-1">{offer.title}</p>
+            <p className="text-slate-500 text-xs mt-1">
+              {formatPrice(offer.price)} (-{offer.discountPct}%) — {offer.storeLabel}
+            </p>
+          </div>
+
+          {/* Seletor de formato */}
+          <div className="flex gap-2">
+            {(['static', 'carrossel', 'reels'] as const).map((f) => (
+              <button key={f} onClick={() => setFormat(f)}
+                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
+                  format === f
+                    ? 'gradient-primary text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}>
+                {f === 'static' ? '📄 Post Estático' : f === 'carrossel' ? '🖼️ Carrossel' : '🎬 Reels/Story'}
+              </button>
+            ))}
+          </div>
+
+          {/* Copy gerada */}
+          <div className="bg-slate-900 text-white rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap font-sans">
+            {copy}
+          </div>
+
+          {/* Botão copiar */}
+          <button
+            onClick={() => { navigator.clipboard.writeText(copy) }}
+            className="w-full py-2.5 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-colors text-sm"
+          >
+            📋 Copiar Copy para a Área de Transferência
+          </button>
+
+          <p className="text-xs text-slate-400 text-center">
+            Cole no Instagram, TikTok, WhatsApp ou onde quiser divulgar!
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Gera copy persuasiva com gatilhos de urgência */
+function generateCopy(offer: Offer, format: 'static' | 'carrossel' | 'reels'): string {
+  const price = formatPrice(offer.price)
+  const origPrice = formatPrice(offer.originalPrice)
+  const discount = offer.discountPct
+  const store = offer.storeLabel
+  const url = offer.url
+
+  const urgencyTriggers = [
+    '🔥 Acaba hoje!',
+    '⚡ Últimas unidades!',
+    '⏰ Oferta relâmpago — pode acabar a qualquer momento!',
+    '🚨 Preço vai subir em breve!',
+    '💣 Preço de Black Friday fora de época!',
+  ]
+  const trigger = urgencyTriggers[Math.floor(Math.random() * urgencyTriggers.length)]
+
+  const baseHeadline = `🏷️ ${offer.title.slice(0, 100)}`
+  const priceLine = `💰 De R$${origPrice} por R$${price} (-${discount}% OFF) na ${store}!`
+  const cta = `\n👇 Comente "EU QUERO" que eu te mando o link!\n\n📲 Ou compre direto: ${url}\n\n#promoção #ofertas #desconto #${store.toLowerCase().replace(/\s/g, '')} #ofertafy`
+
+  switch (format) {
+    case 'static':
+      return `${baseHeadline}\n\n${trigger}\n\n${priceLine}\n\n✅ Frete grátis?\n✅ Parcelamento?\n\nCorre que vale muito a pena!\n${cta}`
+
+    case 'carrossel':
+      return `🖼️ *CARROSSEL — 3 SLIDES*\n\n📸 Slide 1 (Capa):\n${baseHeadline}\n\n📸 Slide 2 (Preço):\n${trigger}\n${priceLine}\n\n📸 Slide 3 (CTA):\nArraste pro lado pra ver o preço 👉\n\n${cta}`
+
+    case 'reels':
+      return `🎬 *REELS / STORY — 15 segundos*\n\n🎵 Som: viral do momento\n📸 Cena: Print do produto + preço na tela\n\n🗣️ Narração:\n"Olha só o que eu achei na ${store}... ${offer.title.slice(0, 60)}... De R$${origPrice} por R$${price}! ${discount}% OFF! ${trigger}"\n\n📝 Texto na tela:\n${baseHeadline}\n${priceLine}\n\n${cta}`
+  }
 }

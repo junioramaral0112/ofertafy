@@ -80,10 +80,10 @@ export default function Header() {
               className="text-xs text-slate-500 hover:text-primary font-medium hidden md:flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors">
               🎫 Cupons
             </Link>
-            {/* Admin link */}
-            <Link href="/admin" title="Gerenciar ofertas"
-              className="text-xs text-slate-400 hover:text-primary font-medium hidden md:block px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors">
-              ⚙️ Admin
+            {/* Admin + Login link */}
+            <Link href="/admin/login" title="Acessar painel administrativo"
+              className="text-xs text-slate-500 hover:text-primary font-medium hidden md:flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-primary hover:bg-primary/5 transition-all">
+              👤 Entrar
             </Link>
 
             <button onClick={() => setMobileMenu(!mobileMenu)} className="md:hidden p-2 rounded-lg hover:bg-slate-100">
@@ -133,8 +133,8 @@ export default function Header() {
               ))}
               <Link href="/cupons" onClick={() => setMobileMenu(false)}
                 className="block px-3 py-2 rounded-lg text-sm hover:bg-slate-50 font-medium">🎫 Cupons de Desconto</Link>
-              <Link href="/admin" onClick={() => setMobileMenu(false)}
-                className="block px-3 py-2 rounded-lg text-sm hover:bg-slate-50 text-primary font-medium">⚙️ Gerenciar Ofertas</Link>
+              <Link href="/admin/login" onClick={() => setMobileMenu(false)}
+                className="block px-3 py-2 rounded-lg text-sm hover:bg-slate-50 text-primary font-medium border border-primary/20 rounded-lg">👤 Entrar / Admin</Link>
               <p className="text-xs font-semibold text-slate-400 uppercase mb-2 mt-4">Categorias</p>
               {CATEGORIES.map((cat) => (
                 <Link key={cat.slug} href={`/categoria/${cat.slug}`} onClick={() => setMobileMenu(false)}

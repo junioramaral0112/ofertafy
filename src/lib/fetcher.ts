@@ -122,7 +122,7 @@ export async function getHomeOffers(): Promise<{ flashDeals: any[]; topOffers: a
   const cached = getCached<{ flashDeals: any[]; topOffers: any[]; recentOffers: any[] }>(cacheKey)
   if (cached) return cached
 
-  const [flashDeals, topOffers, recentOffers] = await Promise.all([
+  const [flashDeals, topOffers] = await Promise.all([
     // Flash: ofertas relâmpago ativas, maior desconto primeiro
     prisma.offer.findMany({
       where: { isFlash: true, flashEndsAt: { gt: new Date() } },
@@ -136,23 +136,39 @@ export async function getHomeOffers(): Promise<{ flashDeals: any[]; topOffers: a
       take: 12,
       include: { priceHistory: { orderBy: { checkedAt: 'desc' }, take: 30 } },
     }),
-    // Recentes: prioriza desconto agressivo + preço acessível
-    // Regra: desconto > 30% OU preço < R$200 = prioridade máxima
-    // Evita produtos acima de R$3000 a menos que tenham 50%+ OFF
-    prisma.offer.findMany({
-      where: {
-        OR: [
-          { discountPct: { gte: 30 }, price: { lte: 200 } },   // Super desconto + barato
-          { discountPct: { gte: 50 } },                          // Desconto agressivo (qualquer preço)
-          { price: { lte: 100 } },                               // Muito barato
-          { price: { lte: 500 }, discountPct: { gte: 20 } },    // Preço médio + bom desconto
-        ],
-      },
-      orderBy: [{ discountPct: 'desc' }, { price: 'asc' }],
-      take: 24,
-      include: { priceHistory: { orderBy: { checkedAt: 'desc' }, take: 30 } },
-    }),
   ])
+
+  // Recentes: busca 8 de cada loja ativa e intercala para equilibrar
+  const stores = ['mercadolivre', 'magalu', 'shopee', 'amazon']
+  const storeOffers = await Promise.all(
+    stores.map((store) =>
+      prisma.offer.findMany({
+        where: {
+          store,
+          OR: [
+            { discountPct: { gte: 30 }, price: { lte: 200 } },
+            { discountPct: { gte: 50 } },
+            { price: { lte: 100 } },
+            { price: { lte: 500 }, discountPct: { gte: 20 } },
+          ],
+        },
+        orderBy: [{ discountPct: 'desc' }, { price: 'asc' }],
+        take: 8,
+        include: { priceHistory: { orderBy: { checkedAt: 'desc' }, take: 30 } },
+      }),
+    ),
+  )
+
+  // Intercala: 1 de cada loja alternadamente
+  const recentOffers: any[] = []
+  let idx = 0
+  while (recentOffers.length < 24 && idx < 8) {
+    for (const arr of storeOffers) {
+      if (arr[idx]) recentOffers.push(arr[idx])
+      if (recentOffers.length >= 24) break
+    }
+    idx++
+  }
 
   const data = { flashDeals, topOffers, recentOffers }
 

@@ -43,8 +43,9 @@ export default function Footer() {
             <ul className="space-y-2.5">
               <li><Link href="/" className="text-sm text-slate-400 hover:text-white transition-colors">Início</Link></li>
               <li><Link href="/busca?q=" className="text-sm text-slate-400 hover:text-white transition-colors">Buscar ofertas</Link></li>
-              <li><span className="text-sm text-slate-500">Sobre nos (em breve)</span></li>
-              <li><span className="text-sm text-slate-500">Contato (em breve)</span></li>
+              <li><Link href="/sobre-nos" className="text-sm text-slate-400 hover:text-white transition-colors">Sobre nós</Link></li>
+              <li><Link href="/contato" className="text-sm text-slate-400 hover:text-white transition-colors">Contato</Link></li>
+              <li><Link href="/cupons" className="text-sm text-slate-400 hover:text-white transition-colors">Cupons</Link></li>
             </ul>
             <div className="mt-6 bg-slate-800 rounded-lg p-3 text-xs text-slate-400">
               ⚠️ Somos um site afiliado. Podemos receber comissão por compras realizadas através dos nossos links. Mercado Livre (matt_tool), Magalu (Magazine Você) e Amazon (tag ofertafy00-20).
