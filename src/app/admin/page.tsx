@@ -431,59 +431,143 @@ export default function AdminPage() {
   )
 }
 
+// ── Cores por loja ──────────────────────────────────────
+const STORE_THEME: Record<string, { bg: string; text: string; badge: string; logo: string }> = {
+  mercadolivre: { bg: '#FFE600', text: '#333', badge: 'bg-[#FFE600] text-slate-900', logo: 'Mercado Livre' },
+  magalu:        { bg: '#0086FF', text: '#fff', badge: 'bg-[#0086FF] text-white',   logo: 'Magalu' },
+  shopee:        { bg: '#EE4D2D', text: '#fff', badge: 'bg-[#EE4D2D] text-white',   logo: 'Shopee' },
+  amazon:        { bg: '#FF9900', text: '#111', badge: 'bg-[#FF9900] text-slate-900', logo: 'Amazon' },
+  tiktok:        { bg: '#000000', text: '#fff', badge: 'bg-black text-white',       logo: 'TikTok Shop' },
+}
+
 // ── Componente Marketing Modal ──────────────────────────
 function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void }) {
   const [format, setFormat] = useState<'static' | 'carrossel' | 'reels'>('static')
+  const theme = STORE_THEME[offer.store] ?? STORE_THEME.shopee
 
   const copy = generateCopy(offer, format)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-10 pb-10 overflow-y-auto" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl mx-4 animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-6 pb-10 overflow-y-auto" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 animate-fade-in">
+        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <h2 className="text-lg font-bold text-slate-900">📢 Gerar Conteúdo de Marketing</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
         </div>
 
-        <div className="p-6 space-y-4">
-          {/* Info do produto */}
-          <div className="bg-slate-50 rounded-xl p-3 text-sm">
-            <p className="font-semibold text-slate-800 line-clamp-1">{offer.title}</p>
-            <p className="text-slate-500 text-xs mt-1">
-              {formatPrice(offer.price)} (-{offer.discountPct}%) — {offer.storeLabel}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+          {/* ═══════════ COLUNA ESQUERDA: Preview do Card ═══════════ */}
+          <div className="flex flex-col items-center">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
+              📸 Preview do Card
+            </p>
+
+            {/* Card — formato Stories 9:16 */}
+            <div className="w-[260px] bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200"
+                 style={{ aspectRatio: '9/16' }}>
+              {/* Imagem do produto */}
+              <div className="relative w-full bg-slate-100" style={{ height: '55%' }}>
+                <img
+                  src={offer.imageUrl}
+                  alt={offer.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/fallback/400/400'
+                  }}
+                />
+
+                {/* Tag de desconto */}
+                {offer.discountPct >= 10 && (
+                  <div className="absolute top-3 left-3 bg-red-600 text-white text-sm font-extrabold px-3 py-1 rounded-lg shadow-lg">
+                    -{offer.discountPct}% OFF
+                  </div>
+                )}
+
+                {/* Logo da loja no canto superior direito */}
+                <div
+                  className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg"
+                  style={{ backgroundColor: theme.bg, color: theme.text }}
+                >
+                  {theme.logo}
+                </div>
+              </div>
+
+              {/* Conteúdo inferior */}
+              <div className="flex flex-col justify-between p-3.5" style={{ height: '45%' }}>
+                {/* Título */}
+                <p className="text-xs font-semibold text-slate-800 leading-snug line-clamp-3 mb-auto">
+                  {offer.title.slice(0, 90)}
+                </p>
+
+                {/* Preços */}
+                <div className="mt-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-[11px] text-slate-400 line-through">
+                      {formatPrice(offer.originalPrice)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-extrabold text-slate-900">
+                      {formatPrice(offer.price)}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-medium">à vista</span>
+                  </div>
+                </div>
+
+                {/* Rodapé */}
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
+                  <span className="text-[9px] text-slate-400">ofertafy.com.br</span>
+                  {offer.freeShipping && (
+                    <span className="text-[9px] text-green-600 font-semibold">📦 Frete grátis</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Dica de print */}
+            <p className="text-[10px] text-slate-400 mt-2 text-center">
+              🖼️ Print perfeito para Stories, Feed e WhatsApp
             </p>
           </div>
 
-          {/* Seletor de formato */}
-          <div className="flex gap-2">
-            {(['static', 'carrossel', 'reels'] as const).map((f) => (
-              <button key={f} onClick={() => setFormat(f)}
-                className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all ${
-                  format === f
-                    ? 'gradient-primary text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}>
-                {f === 'static' ? '📄 Post Estático' : f === 'carrossel' ? '🖼️ Carrossel' : '🎬 Reels/Story'}
-              </button>
-            ))}
+          {/* ═══════════ COLUNA DIREITA: Copy + Formatos ═══════════ */}
+          <div className="space-y-3">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
+              ✍️ Copy para Legenda
+            </p>
+
+            {/* Seletor de formato */}
+            <div className="flex gap-1.5">
+              {(['static', 'carrossel', 'reels'] as const).map((f) => (
+                <button key={f} onClick={() => setFormat(f)}
+                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                    format === f
+                      ? 'gradient-primary text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}>
+                  {f === 'static' ? '📄 Post' : f === 'carrossel' ? '🖼️ Carrossel' : '🎬 Reels'}
+                </button>
+              ))}
+            </div>
+
+            {/* Copy gerada */}
+            <div className="bg-slate-900 text-white rounded-xl p-3.5 text-xs leading-relaxed whitespace-pre-wrap font-sans max-h-56 overflow-y-auto">
+              {copy}
+            </div>
+
+            {/* Botão copiar */}
+            <button
+              onClick={() => { navigator.clipboard.writeText(copy) }}
+              className="w-full py-2.5 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-colors text-sm flex items-center justify-center gap-2"
+            >
+              📋 Copiar Copy
+            </button>
+
+            <p className="text-[10px] text-slate-400 text-center">
+              Cole no Instagram, TikTok ou WhatsApp + print do card ao lado
+            </p>
           </div>
-
-          {/* Copy gerada */}
-          <div className="bg-slate-900 text-white rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap font-sans">
-            {copy}
-          </div>
-
-          {/* Botão copiar */}
-          <button
-            onClick={() => { navigator.clipboard.writeText(copy) }}
-            className="w-full py-2.5 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 transition-colors text-sm"
-          >
-            📋 Copiar Copy para a Área de Transferência
-          </button>
-
-          <p className="text-xs text-slate-400 text-center">
-            Cole no Instagram, TikTok, WhatsApp ou onde quiser divulgar!
-          </p>
         </div>
       </div>
     </div>
@@ -508,17 +592,17 @@ function generateCopy(offer: Offer, format: 'static' | 'carrossel' | 'reels'): s
   const trigger = urgencyTriggers[Math.floor(Math.random() * urgencyTriggers.length)]
 
   const baseHeadline = `🏷️ ${offer.title.slice(0, 100)}`
-  const priceLine = `💰 De R$${origPrice} por R$${price} (-${discount}% OFF) na ${store}!`
+  const priceLine = `💰 De ${origPrice} por ${price} (-${discount}% OFF) na ${store}!`
   const cta = `\n👇 Comente "EU QUERO" que eu te mando o link!\n\n📲 Ou compre direto: ${url}\n\n#promoção #ofertas #desconto #${store.toLowerCase().replace(/\s/g, '')} #ofertafy`
 
   switch (format) {
     case 'static':
-      return `${baseHeadline}\n\n${trigger}\n\n${priceLine}\n\n✅ Frete grátis?\n✅ Parcelamento?\n\nCorre que vale muito a pena!\n${cta}`
+      return `${baseHeadline}\n\n${trigger}\n\n${priceLine}\n\n✅ Corre que vale muito a pena!\n${cta}`
 
     case 'carrossel':
       return `🖼️ *CARROSSEL — 3 SLIDES*\n\n📸 Slide 1 (Capa):\n${baseHeadline}\n\n📸 Slide 2 (Preço):\n${trigger}\n${priceLine}\n\n📸 Slide 3 (CTA):\nArraste pro lado pra ver o preço 👉\n\n${cta}`
 
     case 'reels':
-      return `🎬 *REELS / STORY — 15 segundos*\n\n🎵 Som: viral do momento\n📸 Cena: Print do produto + preço na tela\n\n🗣️ Narração:\n"Olha só o que eu achei na ${store}... ${offer.title.slice(0, 60)}... De R$${origPrice} por R$${price}! ${discount}% OFF! ${trigger}"\n\n📝 Texto na tela:\n${baseHeadline}\n${priceLine}\n\n${cta}`
+      return `🎬 *REELS / STORY — 15 segundos*\n\n🎵 Som: viral do momento\n📸 Cena: Print do card acima + preço na tela\n\n🗣️ Narração:\n"Olha só o que eu achei na ${store}... ${offer.title.slice(0, 60)}... De ${origPrice} por ${price}! ${discount}% OFF! ${trigger}"\n\n📝 Texto na tela:\n${baseHeadline}\n${priceLine}\n\n${cta}`
   }
 }
