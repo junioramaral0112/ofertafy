@@ -139,18 +139,15 @@ export async function getHomeOffers(): Promise<{ flashDeals: any[]; topOffers: a
   ])
 
   // Recentes: busca 8 de cada loja ativa e intercala para equilibrar
+  // Filtro leve: só ignora produtos sem desconto ou com preço zero
   const stores = ['mercadolivre', 'magalu', 'shopee', 'amazon']
   const storeOffers = await Promise.all(
     stores.map((store) =>
       prisma.offer.findMany({
         where: {
           store,
-          OR: [
-            { discountPct: { gte: 30 }, price: { lte: 200 } },
-            { discountPct: { gte: 50 } },
-            { price: { lte: 100 } },
-            { price: { lte: 500 }, discountPct: { gte: 20 } },
-          ],
+          price: { gt: 0 },
+          discountPct: { gte: 5 }, // filtro leve — só ignora sem desconto
         },
         orderBy: [{ discountPct: 'desc' }, { price: 'asc' }],
         take: 8,
@@ -221,15 +218,37 @@ export async function searchOffers(
   const skip = (page - 1) * pageSize
   const where: Record<string, unknown> = {}
 
-  if (query) where.title = { contains: query }
+  // Busca por palavra-chave: case-insensitive + múltiplas palavras
+  if (query) {
+    const words = query.trim().split(/\s+/).filter((w) => w.length > 0)
+    if (words.length === 1) {
+      // Palavra única: contains case-insensitive
+      where.title = { contains: words[0], mode: 'insensitive' }
+    } else {
+      // Múltiplas palavras: cada uma deve aparecer no título (AND)
+      where.AND = words.map((w) => ({
+        title: { contains: w, mode: 'insensitive' },
+      }))
+    }
+  }
+
+  // Filtro por loja
   if (filters.store) where.store = filters.store
+
+  // Filtro por categoria (via categorySlug)
   if (filters.category) where.categorySlug = filters.category
+
+  // Filtro por faixa de preço
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
     where.price = {}
     if (filters.minPrice !== undefined) (where.price as Record<string, number>).gte = filters.minPrice
     if (filters.maxPrice !== undefined) (where.price as Record<string, number>).lte = filters.maxPrice
   }
+
+  // Filtro por desconto mínimo
   if (filters.minDiscount) where.discountPct = { gte: filters.minDiscount }
+
+  // Filtro por frete grátis
   if (filters.freeShipping) where.freeShipping = true
 
   const [offers, total] = await Promise.all([
