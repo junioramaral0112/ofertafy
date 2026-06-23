@@ -450,13 +450,19 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
 
   const copy = generateCopy(offer, format)
 
-  /** Renderiza o card como imagem PNG + texto e copia ambos juntos */
-  async function handleCopyCardAndText() {
+  // Card se adapta: Reels = full 9:16 vertical, Post/Carrossel = compacto
+  const isReels = format === 'reels'
+  const cardWidth = isReels ? 'w-[300px]' : 'w-[260px]'
+  const imageHeight = isReels ? '70%' : '55%'
+  const contentHeight = isReels ? '30%' : '45%'
+
+  /** Renderiza card → download PNG → copia texto → abre Instagram */
+  async function handlePublish() {
     if (!cardRef.current) return
     setCopying(true)
 
     try {
-      // 1. Renderizar o card HTML → canvas (imagem PNG)
+      // 1. Renderizar o card HTML → canvas
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
@@ -465,25 +471,29 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
         allowTaint: true,
       })
 
-      // 2. Converter canvas → Blob PNG
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, 'image/png', 0.95),
-      )
+      // 2. Download automático da imagem
+      const safeName = offer.title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')
+      canvas.toBlob((blob) => {
+        if (!blob) return
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `oferta-${safeName}.png`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }, 'image/png', 0.95)
 
-      if (!blob) throw new Error('Falha ao gerar imagem')
+      // 3. Copiar texto da legenda
+      await navigator.clipboard.writeText(copy)
 
-      // 3. Copiar imagem + texto simultaneamente
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'image/png': blob,
-          'text/plain': new Blob([copy], { type: 'text/plain' }),
-        }),
-      ])
+      // 4. Abrir Instagram Create em nova aba
+      window.open('https://www.instagram.com/#create', '_blank', 'noopener,noreferrer')
 
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     } catch {
-      // Fallback: copia só o texto se imagem falhar
       try { await navigator.clipboard.writeText(copy); setCopied(true); setTimeout(() => setCopied(false), 3000) } catch { /* silencioso */ }
     }
 
@@ -506,11 +516,12 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
               📸 Preview do Card
             </p>
 
-            {/* Card — formato Stories 9:16 (ref para html2canvas) */}
-            <div ref={cardRef} className="w-[260px] bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200"
+            {/* Card — formato adaptável (ref para html2canvas) */}
+            <div ref={cardRef}
+                 className={`${cardWidth} bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200`}
                  style={{ aspectRatio: '9/16' }}>
               {/* Imagem do produto */}
-              <div className="relative w-full bg-slate-100" style={{ height: '55%' }}>
+              <div className="relative w-full bg-slate-100" style={{ height: imageHeight }}>
                 <img
                   src={offer.imageUrl}
                   alt={offer.title}
@@ -537,7 +548,7 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
               </div>
 
               {/* Conteúdo inferior */}
-              <div className="flex flex-col justify-between p-3.5" style={{ height: '45%' }}>
+              <div className="flex flex-col justify-between p-3.5" style={{ height: contentHeight }}>
                 {/* Título */}
                 <p className="text-xs font-semibold text-slate-800 leading-snug line-clamp-3 mb-auto">
                   {offer.title.slice(0, 90)}
@@ -599,27 +610,27 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
               {copy}
             </div>
 
-            {/* Botão copiar IMAGEM + TEXTO */}
+            {/* Botão: Download + Copiar texto + Abrir Instagram */}
             <button
-              onClick={handleCopyCardAndText}
+              onClick={handlePublish}
               disabled={copying}
               className={`w-full py-2.5 font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-2 ${
                 copied
-                  ? 'bg-green-500 text-white'
+                  ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
                   : 'bg-slate-900 text-white hover:bg-slate-800'
               }`}
             >
               {copying ? (
-                <>⏳ Renderizando imagem...</>
+                <>⏳ Renderizando...</>
               ) : copied ? (
-                <>✅ Card + Copy copiados! Cole no WhatsApp/Instagram</>
+                <>✅ Download + Copy OK! Poste no Instagram 🎉</>
               ) : (
-                <>📋 Copiar Card (Imagem + Texto)</>
+                <>🚀 Publicar no Instagram</>
               )}
             </button>
 
             <p className="text-[10px] text-slate-400 text-center">
-              Ctrl+V no WhatsApp, Instagram ou TikTok — a imagem e o texto colam juntos!
+              Baixa a imagem, copia a legenda e abre o Instagram automaticamente
             </p>
           </div>
         </div>
