@@ -353,25 +353,30 @@ export async function saveCoupons(coupons: CouponData[]) {
   let updated = 0
 
   for (const c of coupons) {
-    const existing = await prisma.coupon.findFirst({
-      where: { provider: c.provider, code: c.code },
-    })
-
-    if (existing) {
-      await prisma.coupon.update({
-        where: { id: existing.id },
-        data: {
-          description: c.description,
-          discountValue: c.discountValue,
-          link: c.link,
-          expiryDate: c.expiryDate ?? null,
-          isActive: true,
-        },
+    try {
+      const existing = await prisma.coupon.findFirst({
+        where: { provider: c.provider, code: c.code },
       })
-      updated++
-    } else {
-      await prisma.coupon.create({ data: c })
-      added++
+
+      if (existing) {
+        await prisma.coupon.update({
+          where: { id: existing.id },
+          data: {
+            description: c.description,
+            discountValue: c.discountValue,
+            link: c.link,
+            expiryDate: c.expiryDate ?? null,
+            isActive: true,
+          },
+        })
+        updated++
+      } else {
+        await prisma.coupon.create({ data: c })
+        added++
+      }
+    } catch (e: any) {
+      // Conexão oscilou ou tabela vazia — loga e continua
+      console.error(`   ⚠️  Erro no cupom ${c.provider}/${c.code}: ${e.message?.slice(0, 80)}`)
     }
   }
 
