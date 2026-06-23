@@ -250,8 +250,7 @@ function buildOffer(node: ProductOfferV2Node): RawOffer | null {
       discountPct = Math.round(((originalPrice - price) / originalPrice) * 100)
     }
 
-    if (discountPct < 10) return null
-
+    // Aceita todos os produtos (sem filtro de desconto mínimo)
     // ═══════════════════════════════════════════════
     // 🔒 SANITIZE PRICE (formato idêntico ao banco)
     // ═══════════════════════════════════════════════

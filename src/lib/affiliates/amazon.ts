@@ -217,7 +217,7 @@ async function scrapeAmazonPage(
         const discountPct = p.discountPct > 0 ? p.discountPct
           : (finalOldPrice > price ? Math.round(((finalOldPrice - price) / finalOldPrice) * 100) : 0)
 
-        if (price <= 0 || discountPct < 10) return null
+        if (price <= 0) return null // Aceita todos produtos com preço válido
 
         return {
           sourceId: `amazon-${p.asin}`,

@@ -209,7 +209,7 @@ function buildOffer(
     const finalPrice = sanitizePrice(String(price))
     const finalOriginalPrice = sanitizePrice(String(originalPrice))
 
-    if (finalPrice <= 0 || discountRate < 10) return null
+    if (finalPrice <= 0) return null // Aceita todos produtos com preço válido
 
     // ── Imagem ────────────────────────────────────────
     const imgPath =
