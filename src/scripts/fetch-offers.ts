@@ -8,6 +8,7 @@ import { fetchAmazonDeals } from '../lib/affiliates/amazon'
 import { fetchShopeeDeals } from '../lib/affiliates/shopee'
 import { fetchTikTokDeals } from '../lib/affiliates/tiktok'
 import { fetchAllCoupons, saveCoupons } from '../lib/affiliates/coupons'
+import { classifyProduct } from '../lib/utils'
 
 const prisma = new PrismaClient()
 
@@ -45,17 +46,39 @@ async function main() {
     const existing = await prisma.offer.findFirst({
       where: { sourceId: deal.sourceId, store: deal.store },
     })
+    // 🧠 Reclassificar categoria com base no título + preço
+    const catResult = classifyProduct(deal.title, deal.price, deal.category)
+
     if (existing) {
       if (existing.price !== deal.price) {
         await prisma.priceHistory.create({ data: { offerId: existing.id, price: deal.price } })
       }
       await prisma.offer.update({
         where: { id: existing.id },
-        data: { price: deal.price, originalPrice: deal.originalPrice, discountPct: deal.discountPct, imageUrl: deal.imageUrl, url: deal.url, freeShipping: deal.freeShipping, installment: deal.installment, updatedAt: new Date() },
+        data: {
+          price: deal.price,
+          originalPrice: deal.originalPrice,
+          discountPct: deal.discountPct,
+          imageUrl: deal.imageUrl,
+          url: deal.url,
+          freeShipping: deal.freeShipping,
+          installment: deal.installment,
+          category: catResult.category,
+          categorySlug: catResult.categorySlug,
+          scorePromocional: (deal as any).scorePromocional ?? existing.scorePromocional ?? 0,
+          updatedAt: new Date(),
+        },
       })
       updated++
     } else {
-      await prisma.offer.create({ data: { ...deal } })
+      await prisma.offer.create({
+        data: {
+          ...deal,
+          category: catResult.category,
+          categorySlug: catResult.categorySlug,
+          scorePromocional: (deal as any).scorePromocional ?? 0,
+        },
+      })
       added++
     }
   }
