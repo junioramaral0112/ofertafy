@@ -456,13 +456,12 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
   const imageHeight = isReels ? '70%' : '55%'
   const contentHeight = isReels ? '30%' : '45%'
 
-  /** Renderiza card → download PNG → copia texto → abre Instagram */
-  async function handlePublish() {
+  /** Download da imagem do card via html2canvas */
+  async function handleDownload() {
     if (!cardRef.current) return
     setCopying(true)
 
     try {
-      // 1. Renderizar o card HTML → canvas
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
@@ -471,10 +470,9 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
         allowTaint: true,
       })
 
-      // 2. Download automático da imagem
       const safeName = offer.title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')
       canvas.toBlob((blob) => {
-        if (!blob) return
+        if (!blob) { setCopying(false); return }
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -483,21 +481,28 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
         a.click()
         document.body.removeChild(a)
         URL.revokeObjectURL(url)
+        setCopying(false)
       }, 'image/png', 0.95)
+    } catch {
+      setCopying(false)
+    }
+  }
 
-      // 3. Copiar texto da legenda
-      await navigator.clipboard.writeText(copy)
+  /** Copia legenda + abre Instagram (popup síncrono para não ser bloqueado) */
+  function handleCopyAndGoInsta() {
+    // Popup abre SINCRONAMENTE (antes do await) — evita bloqueio do navegador
+    const instaWindow = window.open('https://www.instagram.com/#create', '_blank', 'noopener,noreferrer')
 
-      // 4. Abrir Instagram Create em nova aba
-      window.open('https://www.instagram.com/#create', '_blank', 'noopener,noreferrer')
-
+    navigator.clipboard.writeText(copy).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
-    } catch {
-      try { await navigator.clipboard.writeText(copy); setCopied(true); setTimeout(() => setCopied(false), 3000) } catch { /* silencioso */ }
-    }
-
-    setCopying(false)
+      // Se o popup foi bloqueado, avisa
+      if (!instaWindow || instaWindow.closed) {
+        alert('Popup bloqueado! Permita popups para ofertafy.com.br ou acesse manualmente: instagram.com/#create')
+      }
+    }).catch(() => {
+      alert('Não foi possível copiar a legenda. Tente novamente.')
+    })
   }
 
   return (
@@ -525,9 +530,14 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
                 <img
                   src={offer.imageUrl}
                   alt={offer.title}
+                  crossOrigin="anonymous"
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/fallback/400/400'
+                    const t = e.target as HTMLImageElement
+                    if (t.src !== 'https://picsum.photos/seed/fallback/400/400') {
+                      t.crossOrigin = 'anonymous'
+                      t.src = 'https://picsum.photos/seed/fallback/400/400'
+                    }
                   }}
                 />
 
@@ -610,27 +620,29 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
               {copy}
             </div>
 
-            {/* Botão: Download + Copiar texto + Abrir Instagram */}
+            {/* Botão 1: Download da imagem */}
             <button
-              onClick={handlePublish}
+              onClick={handleDownload}
               disabled={copying}
+              className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all text-sm flex items-center justify-center gap-2"
+            >
+              {copying ? '⏳ Renderizando...' : '📥 Baixar Card (Imagem)'}
+            </button>
+
+            {/* Botão 2: Copiar legenda + Abrir Instagram */}
+            <button
+              onClick={handleCopyAndGoInsta}
               className={`w-full py-2.5 font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-2 ${
                 copied
                   ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                  : 'bg-slate-900 text-white hover:bg-slate-800'
+                  : 'bg-pink-500 text-white hover:bg-pink-600'
               }`}
             >
-              {copying ? (
-                <>⏳ Renderizando...</>
-              ) : copied ? (
-                <>✅ Download + Copy OK! Poste no Instagram 🎉</>
-              ) : (
-                <>🚀 Publicar no Instagram</>
-              )}
+              {copied ? '✅ Legenda copiada! Vá para o Instagram 🎉' : '📋 Copiar Legenda e Ir pro Insta'}
             </button>
 
             <p className="text-[10px] text-slate-400 text-center">
-              Baixa a imagem, copia a legenda e abre o Instagram automaticamente
+              1️⃣ Baixe a imagem 2️⃣ Copie a legenda e abra o Instagram
             </p>
           </div>
         </div>
