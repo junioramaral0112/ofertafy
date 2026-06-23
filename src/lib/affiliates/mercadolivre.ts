@@ -1,10 +1,11 @@
 import type { AffiliateConfig } from '@/types'
+import { classifyProduct, calculatePromoScore } from '@/lib/utils'
 
 /**
  * 🟡 MERCADO LIVRE SCRAPER
- * Extrai 48 ofertas por pagina da /ofertas do ML.
- * Dados veem no HTML como JSON array "items":[{...}]
- * Links com matt_tool=35888960
+ * Extrai ofertas da /ofertas do ML com Score Promocional.
+ * Captura selo FULL, desconto explícito, frete grátis, avaliações.
+ * Links com matt_tool=35888960 — sanitização robusta contra 404.
  */
 
 const ML_HEADERS = {
@@ -18,6 +19,7 @@ interface RawOffer {
   imageUrl: string; price: number; originalPrice: number; discountPct: number
   url: string; store: string; storeLabel: string; category: string
   categorySlug: string; installment: string | null; freeShipping: boolean
+  scorePromocional?: number
 }
 
 export async function fetchMercadoLivreDeals(config: AffiliateConfig) {
@@ -159,7 +161,19 @@ function parseItem(item: any, mattTool: string): RawOffer | null {
       discountPct = Math.round(((originalPrice - price) / originalPrice) * 100)
     }
 
-    if (!title || price <= 0 || discountPct < 10) return null
+    // Detectar selos promocionais do ML
+    const isFull = item.card?.tags?.some?.((t: any) => t?.type === 'FULL') ?? false
+    const isBestSeller = item.card?.tags?.some?.((t: any) => t?.type === 'BEST_SELLER') ?? false
+
+    if (!title || price <= 0) return null
+
+    // ⭐ Score promocional
+    const scorePromocional = calculatePromoScore({
+      discountPct,
+      freeShipping,
+      isFull,
+      isBestSeller,
+    })
 
     // Imagem
     const pictures = item.card?.pictures?.pictures || []
@@ -168,13 +182,8 @@ function parseItem(item: any, mattTool: string): RawOffer | null {
       ? `https://http2.mlstatic.com/D_NQ_NP_${imgId}-F.webp`
       : `https://http2.mlstatic.com/D_NQ_NP_${productId || id}-F.webp`
 
-    // Categoria slug
-    const catSlug = category
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '') || 'ofertas'
+    // 🧠 Categorização inteligente
+    const catResult = classifyProduct(title, price, category)
 
     return {
       sourceId: id,
@@ -187,10 +196,11 @@ function parseItem(item: any, mattTool: string): RawOffer | null {
       url: affiliateUrl,
       store: 'mercadolivre',
       storeLabel: 'Mercado Livre',
-      category,
-      categorySlug: catSlug,
+      category: catResult.category,
+      categorySlug: catResult.categorySlug,
       installment: `12x R$ ${(price / 12).toFixed(2)}`,
       freeShipping: freeShipping || price > 79,
+      scorePromocional,
     }
   } catch (e) {
     return null

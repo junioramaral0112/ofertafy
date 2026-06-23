@@ -28,6 +28,7 @@ model Offer {
   clicks        Int            @default(0)
   likes         Int            @default(0)
   sourceId      String?
+  scorePromocional Int         @default(0)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   priceHistory  PriceHistory[]
@@ -37,6 +38,7 @@ model Offer {
   @@index([price])
   @@index([createdAt])
   @@index([discountPct])
+  @@index([scorePromocional])
 }
 
 model PriceHistory {

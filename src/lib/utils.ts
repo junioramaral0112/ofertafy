@@ -209,6 +209,201 @@ export function timeAgo(date: Date): string {
   return date.toLocaleDateString('pt-BR')
 }
 
+// ═══════════════════════════════════════════════════════════
+// 🧠 CLASSIFICAÇÃO INTELIGENTE DE CATEGORIAS
+// ═══════════════════════════════════════════════════════════
+
+interface CategoryRule {
+  name: string
+  slug: string
+  keywords: string[]
+  /** Se true, o produto DEVE conter uma dessas keywords (match forte) */
+  requireMatch?: boolean
+  /** Preço máximo para ser classificado como acessório (ex: celular barato = acessório) */
+  maxPriceForAccessory?: number
+  /** Fallback: keywords que indicam que é um acessório, não o produto principal */
+  accessoryKeywords?: string[]
+}
+
+const CATEGORY_RULES: CategoryRule[] = [
+  {
+    name: 'Celulares',
+    slug: 'celulares',
+    keywords: ['smartphone', 'iphone', 'galaxy', 'moto g', 'xiaomi', 'redmi', 'poco', 'celular'],
+    requireMatch: true,
+    maxPriceForAccessory: 200,
+    accessoryKeywords: ['capa', 'capinha', 'pelicula', 'cabo', 'carregador', 'fone', 'suporte', 'cordão', 'alça', 'protetor', 'película', 'case', 'cordinha', 'strap', 'colar'],
+  },
+  {
+    name: 'Acessórios para Celular',
+    slug: 'celulares',
+    keywords: ['capinha', 'pelicula', 'suporte celular', 'carregador celular', 'cabo usb', 'fone bluetooth', 'fone de ouvido', 'power bank', 'adaptador tomada', 'cordão', 'alça', 'protetor', 'película', 'case', 'cordinha', 'strap', 'colar celular', 'corda celular', 'porta celular', 'salva celular', 'corrente celular'],
+  },
+  {
+    name: 'Informática',
+    slug: 'informatica',
+    keywords: ['notebook', 'monitor', 'teclado', 'mouse', 'ssd', 'hd externo', 'impressora', 'memoria ram', 'placa mae', 'processador', 'gabinete', 'fonte', 'headset', 'webcam', 'roteador', 'modem'],
+    requireMatch: true,
+  },
+  {
+    name: 'Eletrônicos',
+    slug: 'eletronicos',
+    keywords: ['tv', 'televisão', 'smart tv', 'soundbar', 'caixa de som', 'home theater', 'projetor', 'drone', 'câmera', 'kindle', 'tablet', 'ipad', 'smartwatch', 'relógio', 'alexa', 'echo dot', 'google nest'],
+    requireMatch: true,
+  },
+  {
+    name: 'Eletrodomésticos',
+    slug: 'eletrodomesticos',
+    keywords: ['geladeira', 'fogão', 'microondas', 'micro-ondas', 'maquina de lavar', 'lavadora', 'aspirador', 'cafeteira', 'liquidificador', 'batedeira', 'air fryer', 'fritadeira', 'torradeira', 'ventilador', 'climatizador', 'ar condicionado', 'ferro de passar', 'purificador'],
+    requireMatch: true,
+  },
+  {
+    name: 'Casa',
+    slug: 'casa',
+    keywords: ['tapete', 'almofada', 'cortina', 'quadro', 'luminária', 'prateleira', 'organizador', 'potes', 'utensílios', 'cozinha', 'jogo de cama', 'toalha', 'edredom', 'travesseiro', 'colchão'],
+  },
+  {
+    name: 'Ferramentas',
+    slug: 'ferramentas',
+    keywords: ['furadeira', 'parafusadeira', 'lixadeira', 'serra', 'martelo', 'chave', 'alicate', 'trena', 'nível', 'solda', 'esmerilhadeira', 'compressor', 'kit ferramentas'],
+    requireMatch: true,
+  },
+  {
+    name: 'Moda',
+    slug: 'moda',
+    keywords: ['tênis', 'camiseta', 'camisa', 'calça', 'bermuda', 'moletom', 'jaqueta', 'chinelo', 'sandália', 'bota', 'boné', 'meia', 'cueca', 'bolsa', 'mochila', 'cinto', 'relógio', 'óculos'],
+  },
+  {
+    name: 'Beleza',
+    slug: 'beleza',
+    keywords: ['perfume', 'creme', 'hidratante', 'maquiagem', 'esmalte', 'shampoo', 'condicionador', 'protetor solar', 'óleo', 'sabonete', 'desodorante', 'colônia', 'baton', 'base', 'pó'],
+  },
+  {
+    name: 'Esportes',
+    slug: 'esportes',
+    keywords: ['academia', 'yoga', 'musculação', 'bicicleta', 'corda de pular', 'garrafa', 'tapete', 'luva', 'bandagem', 'tornozeleira', 'camiseta dry', 'bermuda térmica', 'bola', 'raquete', 'patins'],
+  },
+]
+
+/**
+ * Classifica um produto com base no título, preço e categoria original.
+ *
+ * Regras:
+ * 1. Se o preço < R$ 200 E o título contém keywords de acessórios para celular
+ *    → classifica como "Acessórios para Celular" (NUNCA como "Celulares")
+ * 2. Se o título contém keywords de uma categoria requireMatch → usa essa categoria
+ * 3. Senão, varre todas as categorias e pega a que tiver mais matches de keywords
+ * 4. Fallback: categoria original ou "Ofertas"
+ */
+export function classifyProduct(
+  title: string,
+  price: number,
+  originalCategory?: string,
+): { category: string; categorySlug: string } {
+  const lowerTitle = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+
+  // ── Regra crítica: Celular barato = Acessório ──────
+  const celularRule = CATEGORY_RULES.find((r) => r.slug === 'celulares' && r.requireMatch)!
+  const hasCelularKeyword = celularRule.keywords.some((kw) => lowerTitle.includes(kw))
+  const hasAccessoryKeyword = celularRule.accessoryKeywords?.some((kw) => lowerTitle.includes(kw)) ?? false
+  const isLowPrice = price < (celularRule.maxPriceForAccessory ?? 200)
+
+  if (hasAccessoryKeyword || (hasCelularKeyword && isLowPrice)) {
+    return { category: 'Acessórios para Celular', categorySlug: 'celulares' }
+  }
+
+  // ── Verifica categorias com requireMatch primeiro ──
+  for (const rule of CATEGORY_RULES) {
+    if (rule.requireMatch && rule.slug !== 'celulares') {
+      const matched = rule.keywords.some((kw) => lowerTitle.includes(kw))
+      if (matched) {
+        return { category: rule.name, categorySlug: rule.slug }
+      }
+    }
+  }
+
+  // ── Melhor match por contagem de keywords ──────────
+  let bestMatch: CategoryRule | null = null
+  let bestScore = 0
+
+  for (const rule of CATEGORY_RULES) {
+    if (rule.slug === 'celulares') continue // já tratado acima
+    const score = rule.keywords.filter((kw) => lowerTitle.includes(kw)).length
+    if (score > bestScore) {
+      bestScore = score
+      bestMatch = rule
+    }
+  }
+
+  if (bestMatch && bestScore > 0) {
+    return { category: bestMatch.name, categorySlug: bestMatch.slug }
+  }
+
+  // ── Fallback ───────────────────────────────────────
+  return {
+    category: originalCategory || 'Ofertas',
+    categorySlug: originalCategory?.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'ofertas',
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// ⭐ SCORE PROMOCIONAL
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Calcula o score promocional de um produto (0-200).
+ * Quanto maior o score, mais relevante/destaque a oferta merece.
+ */
+export function calculatePromoScore(params: {
+  discountPct: number
+  freeShipping: boolean
+  isFull?: boolean       // ML: selo FULL
+  isFlash?: boolean      // oferta relâmpago
+  isPrime?: boolean      // Amazon: selo Prime
+  isBestSeller?: boolean // mais vendidos
+  isRecommended?: boolean // Shopee: "Indicado"
+  salesCount?: number    // volume de vendas
+  rating?: number        // 0-5 estrelas
+}): number {
+  let score = 0
+
+  // Desconto (0-50 pontos)
+  if (params.discountPct >= 80) score += 50
+  else if (params.discountPct >= 60) score += 40
+  else if (params.discountPct >= 40) score += 30
+  else if (params.discountPct >= 25) score += 20
+  else if (params.discountPct >= 15) score += 10
+  else if (params.discountPct >= 5) score += 5
+
+  // Selos promocionais
+  if (params.isFull) score += 50       // ML FULL
+  if (params.isFlash) score += 40      // Oferta Relâmpago
+  if (params.isPrime) score += 30      // Amazon Prime
+  if (params.isBestSeller) score += 50 // Mais Vendidos
+  if (params.isRecommended) score += 20 // Shopee Indicado
+
+  // Volume de vendas (Shopee/ML)
+  if (params.salesCount) {
+    if (params.salesCount >= 50000) score += 50
+    else if (params.salesCount >= 30000) score += 30
+    else if (params.salesCount >= 10000) score += 20
+    else if (params.salesCount >= 1000) score += 10
+    else if (params.salesCount >= 100) score += 5
+  }
+
+  // Frete grátis
+  if (params.freeShipping) score += 20
+
+  // Avaliação (0-10 pontos)
+  if (params.rating) {
+    if (params.rating >= 4.8) score += 10
+    else if (params.rating >= 4.5) score += 8
+    else if (params.rating >= 4.0) score += 5
+  }
+
+  return score
+}
+
 export function formatInstallment(price: number, installments: number = 12): string {
   const monthly = price / installments
   return `${installments}x ${formatPrice(monthly)} sem juros`
