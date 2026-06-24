@@ -456,34 +456,61 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
   const imageHeight = isReels ? '70%' : '55%'
   const contentHeight = isReels ? '30%' : '45%'
 
-  /** Download da imagem do card via html2canvas */
+  /** Converte imagem externa para data URL (resolve CORS) */
+  async function imgToDataUrl(src: string): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        try {
+          const c = document.createElement('canvas')
+          c.width = img.naturalWidth
+          c.height = img.naturalHeight
+          const ctx = c.getContext('2d')
+          if (!ctx) { resolve(src); return }
+          ctx.drawImage(img, 0, 0)
+          resolve(c.toDataURL('image/jpeg', 0.9))
+        } catch { resolve(src) }
+      }
+      img.onerror = () => resolve('https://picsum.photos/seed/fallback/400/400')
+      img.src = src
+    })
+  }
+
+  /** Download da imagem do card via html2canvas (com bypass de CORS) */
   async function handleDownload() {
-    if (!cardRef.current) { alert('Card não encontrado. Tente novamente.'); return }
+    if (!cardRef.current) { alert('Card não encontrado.'); return }
     setCopying(true)
 
     try {
-      // Força carregamento da imagem antes do html2canvas
-      const img = cardRef.current.querySelector('img')
-      if (img && !img.complete) {
-        await new Promise<void>((resolve) => { img.onload = () => resolve(); img.onerror = () => resolve() })
+      // 1. Converter imagem externa para data URL (evita CORS)
+      const imgEl = cardRef.current.querySelector('img') as HTMLImageElement | null
+      if (imgEl?.src) {
+        const dataUrl = await imgToDataUrl(imgEl.src)
+        imgEl.src = dataUrl
+        if (!imgEl.complete) {
+          await new Promise<void>((r) => { imgEl.onload = () => r(); imgEl.onerror = () => r() })
+        }
       }
 
+      // 2. Renderizar com html2canvas
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
-        useCORS: true,
         allowTaint: true,
+        useCORS: true,
         logging: false,
       })
 
       if (canvas.width === 0 || canvas.height === 0) {
-        alert('Não foi possível gerar a imagem. Tente recarregar a página.')
+        alert('Canvas vazio. Tente novamente.')
         setCopying(false)
         return
       }
 
-      const safeName = offer.title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')
+      // 3. Download
+      const safeName = offer.title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-') || 'oferta'
       canvas.toBlob((blob) => {
         if (!blob) { alert('Erro ao gerar PNG.'); setCopying(false); return }
         const url = URL.createObjectURL(blob)
@@ -493,28 +520,25 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-        setTimeout(() => URL.revokeObjectURL(url), 1000)
+        setTimeout(() => URL.revokeObjectURL(url), 2000)
         setCopying(false)
       }, 'image/png', 1.0)
     } catch (err: any) {
       console.error('Download erro:', err)
-      alert('Erro ao gerar imagem. Verifique o console (F12).')
+      alert('Erro: ' + (err.message || 'Falha ao gerar imagem'))
       setCopying(false)
     }
   }
 
-  /** Copia legenda + abre Instagram */
-  function handleCopyAndGoInsta() {
+  /** Copia a legenda para a área de transferência (sem abrir Instagram) */
+  function handleCopyLegenda() {
     if (!copy || copy.length < 10) { alert('Legenda vazia. Selecione um formato primeiro.'); return }
-
-    // Abre Instagram (síncrono = não bloqueado pelo navegador)
-    const instaWindow = window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer')
 
     navigator.clipboard.writeText(copy).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     }).catch(() => {
-      // Fallback para navegadores que bloqueiam clipboard
+      // Fallback para navegadores antigos
       const ta = document.createElement('textarea')
       ta.value = copy
       ta.style.position = 'fixed'; ta.style.left = '-9999px'
@@ -525,10 +549,6 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     })
-
-    if (!instaWindow || instaWindow.closed) {
-      setTimeout(() => alert('Popup bloqueado! Permita popups para ofertafy.com.br'), 500)
-    }
   }
 
   return (
@@ -655,20 +675,20 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
               {copying ? '⏳ Renderizando...' : '📥 Baixar Card (Imagem)'}
             </button>
 
-            {/* Botão 2: Copiar legenda + Abrir Instagram */}
+            {/* Botão 2: Copiar legenda */}
             <button
-              onClick={handleCopyAndGoInsta}
+              onClick={handleCopyLegenda}
               className={`w-full py-2.5 font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-2 ${
                 copied
-                  ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                  : 'bg-pink-500 text-white hover:bg-pink-600'
+                  ? 'bg-green-500 text-white'
+                  : 'bg-slate-700 text-white hover:bg-slate-800'
               }`}
             >
-              {copied ? '✅ Legenda copiada! Vá para o Instagram 🎉' : '📋 Copiar Legenda e Ir pro Insta'}
+              {copied ? '✅ Copiado!' : '📋 Copiar Legenda'}
             </button>
 
             <p className="text-[10px] text-slate-400 text-center">
-              1️⃣ Baixe a imagem 2️⃣ Copie a legenda e abra o Instagram
+              1️⃣ Baixe a imagem 2️⃣ Copie a legenda e cole no Instagram
             </p>
           </div>
         </div>
