@@ -458,21 +458,34 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
 
   /** Download da imagem do card via html2canvas */
   async function handleDownload() {
-    if (!cardRef.current) return
+    if (!cardRef.current) { alert('Card não encontrado. Tente novamente.'); return }
     setCopying(true)
 
     try {
+      // Força carregamento da imagem antes do html2canvas
+      const img = cardRef.current.querySelector('img')
+      if (img && !img.complete) {
+        await new Promise<void>((resolve) => { img.onload = () => resolve(); img.onerror = () => resolve() })
+      }
+
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
         allowTaint: true,
+        logging: false,
       })
+
+      if (canvas.width === 0 || canvas.height === 0) {
+        alert('Não foi possível gerar a imagem. Tente recarregar a página.')
+        setCopying(false)
+        return
+      }
 
       const safeName = offer.title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-')
       canvas.toBlob((blob) => {
-        if (!blob) { setCopying(false); return }
+        if (!blob) { alert('Erro ao gerar PNG.'); setCopying(false); return }
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -480,29 +493,42 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
         setCopying(false)
-      }, 'image/png', 0.95)
-    } catch {
+      }, 'image/png', 1.0)
+    } catch (err: any) {
+      console.error('Download erro:', err)
+      alert('Erro ao gerar imagem. Verifique o console (F12).')
       setCopying(false)
     }
   }
 
-  /** Copia legenda + abre Instagram (popup síncrono para não ser bloqueado) */
+  /** Copia legenda + abre Instagram */
   function handleCopyAndGoInsta() {
-    // Popup abre SINCRONAMENTE (antes do await) — evita bloqueio do navegador
-    const instaWindow = window.open('https://www.instagram.com/#create', '_blank', 'noopener,noreferrer')
+    if (!copy || copy.length < 10) { alert('Legenda vazia. Selecione um formato primeiro.'); return }
+
+    // Abre Instagram (síncrono = não bloqueado pelo navegador)
+    const instaWindow = window.open('https://www.instagram.com/', '_blank', 'noopener,noreferrer')
 
     navigator.clipboard.writeText(copy).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
-      // Se o popup foi bloqueado, avisa
-      if (!instaWindow || instaWindow.closed) {
-        alert('Popup bloqueado! Permita popups para ofertafy.com.br ou acesse manualmente: instagram.com/#create')
-      }
     }).catch(() => {
-      alert('Não foi possível copiar a legenda. Tente novamente.')
+      // Fallback para navegadores que bloqueiam clipboard
+      const ta = document.createElement('textarea')
+      ta.value = copy
+      ta.style.position = 'fixed'; ta.style.left = '-9999px'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 3000)
     })
+
+    if (!instaWindow || instaWindow.closed) {
+      setTimeout(() => alert('Popup bloqueado! Permita popups para ofertafy.com.br'), 500)
+    }
   }
 
   return (

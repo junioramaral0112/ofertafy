@@ -27,37 +27,108 @@ const config = {
 // ═══════════════════════════════════════════════════════════
 // Constantes de resiliência
 // ═══════════════════════════════════════════════════════════
-const BATCH_SIZE = 10          // ofertas por lote
-const BATCH_DELAY_MS = 400     // pausa entre lotes
-const MAX_RETRIES = 2          // tentativas por oferta
-const RETRY_DELAY_MS = 800     // pausa extra quando falha
+const BATCH_SIZE = 50          // ofertas por lote no createMany
+const BATCH_DELAY_MS = 300     // pausa entre lotes
+const MAX_RETRIES = 3          // tentativas por lote
+const RETRY_DELAY_MS = 1000    // pausa extra quando falha
 
-/** Pausa assíncrona */
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-/** Salva/atualiza UMA oferta com retry e tratamento de erro */
-async function saveOneOffer(
-  deal: any,
-  retries: number = MAX_RETRIES,
-): Promise<'added' | 'updated' | 'skipped' | 'error'> {
-  try {
-    const catResult = classifyProduct(deal.title, deal.price, deal.category)
+/** Constrói chave única para o Map de existência */
+function offerKey(sourceId: string, store: string): string {
+  return `${store}::${sourceId}`
+}
 
-    const existing = await prisma.offer.findFirst({
-      where: { sourceId: deal.sourceId, store: deal.store },
-      select: { id: true, price: true, scorePromocional: true },
+/**
+ * Salva ofertas em bulk:
+ *   1. 1 query findMany → Map em memória
+ *   2. Separa novos vs existentes
+ *   3. createMany para novos (batch de 50)
+ *   4. Updates individuais em lote (só atualiza quem mudou preço)
+ */
+async function saveOffersBulk(allDeals: any[]): Promise<{ added: number; updated: number; errors: number }> {
+  const validDeals = allDeals.filter((d) => d.sourceId && d.title && d.price > 0)
+  if (validDeals.length === 0) return { added: 0, updated: 0, errors: 0 }
+
+  console.log(`\n💾 Salvando ${validDeals.length} ofertas (bulk)...`)
+
+  // ── 1. Carregar existentes em 1 query ──────────────────
+  const keys = validDeals.map((d) => d.sourceId)
+  const stores = [...new Set(validDeals.map((d) => d.store))]
+
+  let existingRows: Array<{ id: string; sourceId: string | null; store: string; price: number; scorePromocional: number }> = []
+  try {
+    existingRows = await prisma.offer.findMany({
+      where: { sourceId: { in: keys }, store: { in: stores } },
+      select: { id: true, sourceId: true, store: true, price: true, scorePromocional: true },
     })
+  } catch (e: any) {
+    console.error(`   ❌ Erro ao carregar existentes: ${e.message?.slice(0, 100)}`)
+    // fallback: continua sem mapa (tudo será create)
+  }
+
+  // Map: `${store}::${sourceId}` → { id, price, scorePromocional }
+  const existMap = new Map<string, typeof existingRows[0]>()
+  for (const row of existingRows) {
+    if (row.sourceId) existMap.set(offerKey(row.sourceId, row.store), row)
+  }
+  console.log(`   📊 ${existingRows.length} já existem no banco | ${validDeals.length - existingRows.length} novos`)
+
+  // ── 2. Separar novos vs existentes ─────────────────────
+  const novos: any[] = []
+  const paraAtualizar: Array<{ id: string; deal: any; catResult: any; oldPrice: number; oldScore: number }> = []
+
+  for (const deal of validDeals) {
+    const key = offerKey(deal.sourceId, deal.store)
+    const existing = existMap.get(key)
+    const catResult = classifyProduct(deal.title, deal.price, deal.category)
 
     if (existing) {
       if (existing.price !== deal.price) {
-        await prisma.priceHistory.create({
-          data: { offerId: existing.id, price: deal.price },
+        paraAtualizar.push({
+          id: existing.id,
+          deal,
+          catResult,
+          oldPrice: existing.price,
+          oldScore: existing.scorePromocional,
         })
       }
+    } else {
+      novos.push({
+        ...deal,
+        category: catResult.category,
+        categorySlug: catResult.categorySlug,
+        scorePromocional: deal.scorePromocional ?? 0,
+      })
+    }
+  }
+
+  let added = 0, updated = 0, errors = 0
+
+  // ── 3. createMany em lotes ─────────────────────────────
+  for (let i = 0; i < novos.length; i += BATCH_SIZE) {
+    const batch = novos.slice(i, i + BATCH_SIZE)
+    try {
+      await prisma.offer.createMany({ data: batch, skipDuplicates: true })
+      added += batch.length
+    } catch (e: any) {
+      console.error(`   ❌ createMany lote ${Math.floor(i / BATCH_SIZE) + 1}: ${e.message?.slice(0, 80)}`)
+      // Fallback: criar um por um
+      for (const d of batch) {
+        try { await prisma.offer.create({ data: d }); added++ } catch { errors++ }
+      }
+    }
+    if (i + BATCH_SIZE < novos.length) await sleep(BATCH_DELAY_MS)
+  }
+
+  // ── 4. Updates em lote ─────────────────────────────────
+  for (const { id, deal, catResult, oldPrice } of paraAtualizar) {
+    try {
+      await prisma.priceHistory.create({ data: { offerId: id, price: deal.price } })
       await prisma.offer.update({
-        where: { id: existing.id },
+        where: { id },
         data: {
           price: deal.price,
           originalPrice: deal.originalPrice,
@@ -68,39 +139,17 @@ async function saveOneOffer(
           installment: deal.installment,
           category: catResult.category,
           categorySlug: catResult.categorySlug,
-          scorePromocional: deal.scorePromocional ?? existing.scorePromocional ?? 0,
+          scorePromocional: deal.scorePromocional ?? 0,
           updatedAt: new Date(),
         },
       })
-      return 'updated'
-    } else {
-      await prisma.offer.create({
-        data: {
-          ...deal,
-          category: catResult.category,
-          categorySlug: catResult.categorySlug,
-          scorePromocional: deal.scorePromocional ?? 0,
-        },
-      })
-      return 'added'
+      updated++
+    } catch (e: any) {
+      errors++
     }
-  } catch (e: any) {
-    // Erro de conexão (P1017) ou timeout → retry
-    const isConnectionError =
-      e?.code === 'P1017' ||
-      e?.message?.includes('Server has closed') ||
-      e?.message?.includes('timeout') ||
-      e?.message?.includes('ECONNREFUSED')
-
-    if (isConnectionError && retries > 0) {
-      console.warn(`   ⚠️  Conexão caiu em "${deal.title?.slice(0, 40)}"... retry em ${RETRY_DELAY_MS}ms (${retries} restantes)`)
-      await sleep(RETRY_DELAY_MS)
-      return saveOneOffer(deal, retries - 1)
-    }
-
-    console.error(`   ❌ Erro persistente em "${deal.title?.slice(0, 40)}": ${e.message?.slice(0, 80)}`)
-    return 'error'
   }
+
+  return { added, updated, errors }
 }
 
 async function main() {
@@ -119,46 +168,12 @@ async function main() {
   ])
 
   console.log(`🟡 ML: ${mlDeals.length} | 🔵 Magalu: ${magaluDeals.length} | 🟠 Amazon: ${amazonDeals.length} | 🔴 Shopee: ${shopeeDeals.length} | 🎵 TikTok: ${tiktokDeals.length}`)
-  console.log('')
 
-  // ── Fase 2: Salvamento em Lotes ──────────────────────
+  // ── Fase 2: Salvamento Bulk ───────────────────────────
   const allDeals = [...mlDeals, ...magaluDeals, ...shopeeDeals, ...amazonDeals, ...tiktokDeals]
-    .filter((d) => d.sourceId && d.title)
+  const { added, updated, errors } = await saveOffersBulk(allDeals)
 
-  let added = 0, updated = 0, skipped = 0, errors = 0
-  const totalBatches = Math.ceil(allDeals.length / BATCH_SIZE)
-
-  console.log(`💾 Salvando ${allDeals.length} ofertas em ${totalBatches} lotes de ${BATCH_SIZE}...`)
-  console.log('')
-
-  for (let i = 0; i < allDeals.length; i += BATCH_SIZE) {
-    const batch = allDeals.slice(i, i + BATCH_SIZE)
-    const batchNum = Math.floor(i / BATCH_SIZE) + 1
-
-    // Processa o lote (sequencialmente dentro do lote para não sobrecarregar)
-    for (const deal of batch) {
-      const result = await saveOneOffer(deal)
-
-      if (result === 'added') added++
-      else if (result === 'updated') updated++
-      else if (result === 'skipped') skipped++
-      else errors++
-    }
-
-    // Progresso
-    const done = Math.min(i + BATCH_SIZE, allDeals.length)
-    const pct = Math.round((done / allDeals.length) * 100)
-    process.stdout.write(`\r   📊 ${done}/${allDeals.length} (${pct}%) — ${added} novas, ${updated} atualizadas, ${errors} erros`)
-
-    // Pausa entre lotes (só se ainda houver mais)
-    if (i + BATCH_SIZE < allDeals.length) {
-      await sleep(BATCH_DELAY_MS)
-    }
-  }
-
-  console.log('')
-  console.log('')
-  console.log(`📊 Final: ${added} novas, ${updated} atualizadas, ${skipped} ignoradas, ${errors} erros`)
+  console.log(`\n📊 Final: ${added} novas, ${updated} atualizadas, ${errors} erros`)
 
   // ── Cupons de desconto ────────────────────────────────
   console.log('')

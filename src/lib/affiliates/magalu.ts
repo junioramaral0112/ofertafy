@@ -208,7 +208,7 @@ function buildMagaluVoceOffer(
       discountPct = Math.round(((originalPrice - price) / originalPrice) * 100)
     }
 
-    if (discountPct < 10) return null
+    // Aceita todos os produtos (sem filtro de desconto mínimo)
 
     // Parcelamento
     let installment: string | null = null
