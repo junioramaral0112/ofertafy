@@ -493,7 +493,7 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
         }
       }
 
-      // 2. Renderizar com html2canvas
+      // 2. Renderizar com html2canvas (remove lab/oklch não suportadas)
       const html2canvas = (await import('html2canvas')).default
       const canvas = await html2canvas(cardRef.current, {
         scale: 2,
@@ -501,6 +501,24 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
         allowTaint: true,
         useCORS: true,
         logging: false,
+        onclone(clonedDoc) {
+          // Regex para detectar funções de cor não suportadas
+          const re = /\b(lab|oklab|oklch|lch|color)\([^)]*\)/gi
+
+          // Percorre todos os elementos do clone
+          clonedDoc.querySelectorAll('*').forEach((el) => {
+            const style = (el as HTMLElement).style
+            // Checa inline style
+            for (let i = style.length - 1; i >= 0; i--) {
+              const prop = style[i]
+              const val = style.getPropertyValue(prop)
+              if (re.test(val)) {
+                // Substitui lab/oklch por fallback: preto ou branco
+                style.setProperty(prop, val.replace(re, '#000000'), 'important')
+              }
+            }
+          })
+        },
       })
 
       if (canvas.width === 0 || canvas.height === 0) {
