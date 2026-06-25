@@ -453,7 +453,8 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
   async function handleDownloadImage() {
     setDownloading(true)
     try {
-      const res = await fetch(offer.imageUrl)
+      const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(offer.imageUrl)}`
+      const res = await fetch(proxyUrl)
       if (!res.ok) throw new Error('Fetch falhou')
       const blob = await res.blob()
       const ext = blob.type === 'image/png' ? 'png' : 'jpg'
