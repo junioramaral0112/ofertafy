@@ -456,78 +456,126 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
   const imageHeight = isReels ? '70%' : '55%'
   const contentHeight = isReels ? '30%' : '45%'
 
-  /** Converte imagem externa para data URL (resolve CORS) */
-  async function imgToDataUrl(src: string): Promise<string> {
+  /** Carrega imagem em um objeto Image (com fallback) */
+  function loadImage(src: string): Promise<HTMLImageElement> {
     return new Promise((resolve) => {
       const img = new Image()
       img.crossOrigin = 'anonymous'
-      img.onload = () => {
-        try {
-          const c = document.createElement('canvas')
-          c.width = img.naturalWidth
-          c.height = img.naturalHeight
-          const ctx = c.getContext('2d')
-          if (!ctx) { resolve(src); return }
-          ctx.drawImage(img, 0, 0)
-          resolve(c.toDataURL('image/jpeg', 0.9))
-        } catch { resolve(src) }
-      }
-      img.onerror = () => resolve('https://picsum.photos/seed/fallback/400/400')
+      img.onload = () => resolve(img)
+      img.onerror = () => { img.src = 'https://picsum.photos/seed/fallback/400/400' }
       img.src = src
     })
   }
 
-  /** Download da imagem do card via html2canvas (com bypass de CORS) */
+  /** Desenha o card inteiro via Canvas API nativa (1080x1080) */
   async function handleDownload() {
     if (!cardRef.current) { alert('Card não encontrado.'); return }
     setCopying(true)
 
     try {
-      // 1. Converter imagem externa para data URL (evita CORS)
+      const W = 1080, H = 1080
+      const canvas = document.createElement('canvas')
+      canvas.width = W; canvas.height = H
+      const ctx = canvas.getContext('2d')!
+      const pad = 48
+
+      // Fundo branco
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, W, H)
+
+      // ── Imagem do produto ────────────────────────────
       const imgEl = cardRef.current.querySelector('img') as HTMLImageElement | null
-      if (imgEl?.src) {
-        const dataUrl = await imgToDataUrl(imgEl.src)
-        imgEl.src = dataUrl
-        if (!imgEl.complete) {
-          await new Promise<void>((r) => { imgEl.onload = () => r(); imgEl.onerror = () => r() })
-        }
+      const img = await loadImage(imgEl?.src || '')
+      const imgH = H * 0.52
+      ctx.drawImage(img, 0, 0, W, imgH)
+
+      // Sombra suave na transição imagem→texto
+      const grad = ctx.createLinearGradient(0, imgH - 60, 0, imgH)
+      grad.addColorStop(0, 'rgba(255,255,255,0)')
+      grad.addColorStop(1, 'rgba(255,255,255,1)')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, imgH - 60, W, 60)
+
+      // ── Badge desconto ───────────────────────────────
+      if (offer.discountPct >= 10) {
+        ctx.fillStyle = '#dc2626'
+        roundRect(ctx, pad, 40, 170, 52, 14)
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 28px system-ui'
+        ctx.fillText(`-${offer.discountPct}% OFF`, pad + 18, 76)
       }
 
-      // 2. Renderizar com html2canvas (remove lab/oklch não suportadas)
-      const html2canvas = (await import('html2canvas')).default
-      const canvas = await html2canvas(cardRef.current, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-        allowTaint: true,
-        useCORS: true,
-        logging: false,
-        onclone(clonedDoc) {
-          // Regex para detectar funções de cor não suportadas
-          const re = /\b(lab|oklab|oklch|lch|color)\([^)]*\)/gi
+      // ── Logo da loja ─────────────────────────────────
+      const storeColors: Record<string, string> = {
+        mercadolivre: '#FFE600', magalu: '#0086FF', shopee: '#EE4D2D', amazon: '#FF9900', tiktok: '#000000',
+      }
+      const storeBg = storeColors[offer.store] || '#333333'
+      const storeText = offer.store === 'mercadolivre' || offer.store === 'amazon' ? '#000000' : '#ffffff'
 
-          // Percorre todos os elementos do clone
-          clonedDoc.querySelectorAll('*').forEach((el) => {
-            const style = (el as HTMLElement).style
-            // Checa inline style
-            for (let i = style.length - 1; i >= 0; i--) {
-              const prop = style[i]
-              const val = style.getPropertyValue(prop)
-              if (re.test(val)) {
-                // Substitui lab/oklch por fallback: preto ou branco
-                style.setProperty(prop, val.replace(re, '#000000'), 'important')
-              }
-            }
-          })
-        },
-      })
+      ctx.fillStyle = storeBg
+      const storeW = ctx.measureText(offer.storeLabel).width + 32
+      roundRect(ctx, W - storeW - pad, 40, storeW, 46, 23)
+      ctx.fillStyle = storeText
+      ctx.font = 'bold 20px system-ui'
+      ctx.fillText(offer.storeLabel, W - storeW - pad + 16, 71)
 
-      if (canvas.width === 0 || canvas.height === 0) {
-        alert('Canvas vazio. Tente novamente.')
-        setCopying(false)
-        return
+      // ── Título ────────────────────────────────────────
+      const title = offer.title.slice(0, 90)
+      ctx.fillStyle = '#1e293b'
+      ctx.font = 'bold 36px system-ui'
+      const titleLines = wrapText(ctx, title, W - pad * 2)
+      let y = imgH + 104
+      for (let i = 0; i < Math.min(titleLines.length, 2); i++) {
+        ctx.fillText(titleLines[i], pad, y)
+        y += 48
       }
 
-      // 3. Download
+      // ── Preço original (riscado) ─────────────────────
+      const origPrice = formatPrice(offer.originalPrice)
+      ctx.fillStyle = '#94a3b8'
+      ctx.font = '28px system-ui'
+      const origW = ctx.measureText(origPrice).width
+      ctx.fillText(`De ${origPrice}`, pad, y + 36)
+      // Linha riscando
+      ctx.strokeStyle = '#94a3b8'
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(pad + 40, y + 28)
+      ctx.lineTo(pad + 40 + origW, y + 28)
+      ctx.stroke()
+
+      // ── Preço atual (grande) ──────────────────────────
+      const curPrice = formatPrice(offer.price)
+      ctx.fillStyle = '#0f172a'
+      ctx.font = 'bold 64px system-ui'
+      ctx.fillText(curPrice, pad, y + 96)
+
+      // ── Tag "à vista" ─────────────────────────────────
+      ctx.fillStyle = '#64748b'
+      ctx.font = '20px system-ui'
+      ctx.fillText('à vista', pad + ctx.measureText(curPrice).width + 12, y + 96)
+
+      // ── Frete grátis ──────────────────────────────────
+      if (offer.freeShipping) {
+        ctx.fillStyle = '#16a34a'
+        ctx.font = 'bold 22px system-ui'
+        ctx.fillText('📦 Frete grátis', pad, y + 136)
+      }
+
+      // ── Rodapé ────────────────────────────────────────
+      const footerY = H - 80
+      ctx.strokeStyle = '#e2e8f0'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(pad, footerY)
+      ctx.lineTo(W - pad, footerY)
+      ctx.stroke()
+
+      ctx.fillStyle = '#94a3b8'
+      ctx.font = '18px system-ui'
+      ctx.fillText('ofertafy.com.br', pad, footerY + 36)
+
+      // ── Download ──────────────────────────────────────
       const safeName = offer.title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-') || 'oferta'
       canvas.toBlob((blob) => {
         if (!blob) { alert('Erro ao gerar PNG.'); setCopying(false); return }
@@ -713,6 +761,36 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
       </div>
     </div>
   )
+}
+
+/** Desenha retângulo com bordas arredondadas */
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.arcTo(x + w, y, x + w, y + r, r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
+  ctx.lineTo(x + r, y + h)
+  ctx.arcTo(x, y + h, x, y + h - r, r)
+  ctx.lineTo(x, y + r)
+  ctx.arcTo(x, y, x + r, y, r)
+  ctx.closePath()
+  ctx.fill()
+}
+
+/** Quebra texto em múltiplas linhas */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
+  const words = text.split(' ')
+  const lines: string[] = []
+  let line = ''
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w }
+    else { line = test }
+  }
+  if (line) lines.push(line)
+  return lines
 }
 
 /** Gera copy persuasiva com gatilhos de urgência */
