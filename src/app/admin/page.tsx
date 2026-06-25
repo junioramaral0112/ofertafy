@@ -444,20 +444,33 @@ const STORE_THEME: Record<string, { bg: string; text: string; badge: string; log
 function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void }) {
   const [format, setFormat] = useState<'static' | 'carrossel' | 'reels'>('static')
   const [copied, setCopied] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const theme = STORE_THEME[offer.store] ?? STORE_THEME.shopee
 
   const copy = generateCopy(offer, format)
 
-  /** Baixa a imagem do produto diretamente */
-  function handleDownloadImage() {
-    const a = document.createElement('a')
-    a.href = offer.imageUrl
-    a.download = ''
-    a.target = '_blank'
-    a.rel = 'noopener noreferrer'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+  /** Baixa a imagem via fetch+blob (download automático, sem abrir nova aba) */
+  async function handleDownloadImage() {
+    setDownloading(true)
+    try {
+      const res = await fetch(offer.imageUrl)
+      if (!res.ok) throw new Error('Fetch falhou')
+      const blob = await res.blob()
+      const ext = blob.type === 'image/png' ? 'png' : 'jpg'
+      const safeName = offer.title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-') || 'produto'
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `oferta-${safeName}.${ext}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // Fallback: abre em nova aba
+      window.open(offer.imageUrl, '_blank', 'noopener,noreferrer')
+    }
+    setDownloading(false)
   }
 
   /** Copia a legenda para a área de transferência */
@@ -529,9 +542,9 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
               {copy}
             </div>
 
-            <button onClick={handleDownloadImage}
-              className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all text-sm">
-              📥 Baixar Imagem do Produto
+            <button onClick={handleDownloadImage} disabled={downloading}
+              className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all text-sm disabled:opacity-50">
+              {downloading ? '⏳ Baixando...' : '📥 Baixar Imagem do Produto'}
             </button>
 
             <button onClick={handleCopyLegenda}
