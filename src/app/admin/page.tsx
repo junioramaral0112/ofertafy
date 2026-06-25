@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { formatPrice } from '@/lib/utils'
 
 interface Offer {
@@ -443,184 +443,24 @@ const STORE_THEME: Record<string, { bg: string; text: string; badge: string; log
 // ── Componente Marketing Modal ──────────────────────────
 function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void }) {
   const [format, setFormat] = useState<'static' | 'carrossel' | 'reels'>('static')
-  const [copying, setCopying] = useState(false)
   const [copied, setCopied] = useState(false)
-  const cardRef = useRef<HTMLDivElement>(null)
   const theme = STORE_THEME[offer.store] ?? STORE_THEME.shopee
 
   const copy = generateCopy(offer, format)
 
-  // Card se adapta: Reels = full 9:16 vertical, Post/Carrossel = compacto
-  const isReels = format === 'reels'
-  const cardWidth = isReels ? 'w-[300px]' : 'w-[260px]'
-  const imageHeight = isReels ? '70%' : '55%'
-  const contentHeight = isReels ? '30%' : '45%'
-
-  /** Carrega imagem sem crossOrigin (evita bloqueio CORS no canvas) */
-  function loadImageForCanvas(src: string): Promise<HTMLImageElement | null> {
-    return new Promise((resolve) => {
-      // Tenta 1: sem crossOrigin (funciona com a maioria das URLs)
-      const img = new Image()
-      img.onload = () => resolve(img)
-      img.onerror = () => {
-        // Tenta 2: com crossOrigin
-        const img2 = new Image()
-        img2.crossOrigin = 'anonymous'
-        img2.onload = () => resolve(img2)
-        img2.onerror = () => {
-          // Tenta 3: placeholder que SEMPRE funciona
-          const img3 = new Image()
-          img3.onload = () => resolve(img3)
-          img3.onerror = () => resolve(null)
-          img3.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect fill="#e2e8f0" width="400" height="400"/><text fill="#94a3b8" font-size="48" font-family="sans-serif" text-anchor="middle" x="200" y="220">📦</text></svg>')
-        }
-        img2.src = src
-      }
-      img.src = src
-    })
+  /** Baixa a imagem do produto diretamente */
+  function handleDownloadImage() {
+    const a = document.createElement('a')
+    a.href = offer.imageUrl
+    a.download = ''
+    a.target = '_blank'
+    a.rel = 'noopener noreferrer'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
-  /** Desenha o card inteiro via Canvas API nativa (1080x1080) */
-  async function handleDownload() {
-    if (!cardRef.current) { alert('Card não encontrado.'); return }
-    setCopying(true)
-
-    try {
-      const W = 1080, H = 1080
-      const canvas = document.createElement('canvas')
-      canvas.width = W; canvas.height = H
-      const ctx = canvas.getContext('2d')!
-      const pad = 48
-
-      // Fundo branco
-      ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, W, H)
-
-      // ── Imagem do produto ────────────────────────────
-      const imgEl = cardRef.current.querySelector('img') as HTMLImageElement | null
-      const img = await loadImageForCanvas(imgEl?.src || '')
-      const imgH = H * 0.52
-      if (img) {
-        ctx.drawImage(img, 0, 0, W, imgH)
-      } else {
-        // Placeholder desenhado manualmente
-        ctx.fillStyle = '#e2e8f0'
-        ctx.fillRect(0, 0, W, imgH)
-        ctx.fillStyle = '#94a3b8'
-        ctx.font = '80px system-ui'
-        ctx.textAlign = 'center'
-        ctx.fillText('📦', W / 2, imgH / 2 + 30)
-        ctx.textAlign = 'start'
-      }
-
-      // Sombra suave na transição imagem→texto
-      const grad = ctx.createLinearGradient(0, imgH - 60, 0, imgH)
-      grad.addColorStop(0, 'rgba(255,255,255,0)')
-      grad.addColorStop(1, 'rgba(255,255,255,1)')
-      ctx.fillStyle = grad
-      ctx.fillRect(0, imgH - 60, W, 60)
-
-      // ── Badge desconto ───────────────────────────────
-      if (offer.discountPct >= 10) {
-        ctx.fillStyle = '#dc2626'
-        roundRect(ctx, pad, 40, 170, 52, 14)
-        ctx.fillStyle = '#ffffff'
-        ctx.font = 'bold 28px system-ui'
-        ctx.fillText(`-${offer.discountPct}% OFF`, pad + 18, 76)
-      }
-
-      // ── Logo da loja ─────────────────────────────────
-      const storeColors: Record<string, string> = {
-        mercadolivre: '#FFE600', magalu: '#0086FF', shopee: '#EE4D2D', amazon: '#FF9900', tiktok: '#000000',
-      }
-      const storeBg = storeColors[offer.store] || '#333333'
-      const storeText = offer.store === 'mercadolivre' || offer.store === 'amazon' ? '#000000' : '#ffffff'
-
-      ctx.fillStyle = storeBg
-      const storeW = ctx.measureText(offer.storeLabel).width + 32
-      roundRect(ctx, W - storeW - pad, 40, storeW, 46, 23)
-      ctx.fillStyle = storeText
-      ctx.font = 'bold 20px system-ui'
-      ctx.fillText(offer.storeLabel, W - storeW - pad + 16, 71)
-
-      // ── Título ────────────────────────────────────────
-      const title = offer.title.slice(0, 90)
-      ctx.fillStyle = '#1e293b'
-      ctx.font = 'bold 36px system-ui'
-      const titleLines = wrapText(ctx, title, W - pad * 2)
-      let y = imgH + 104
-      for (let i = 0; i < Math.min(titleLines.length, 2); i++) {
-        ctx.fillText(titleLines[i], pad, y)
-        y += 48
-      }
-
-      // ── Preço original (riscado) ─────────────────────
-      const origPrice = formatPrice(offer.originalPrice)
-      ctx.fillStyle = '#94a3b8'
-      ctx.font = '28px system-ui'
-      const origW = ctx.measureText(origPrice).width
-      ctx.fillText(`De ${origPrice}`, pad, y + 36)
-      // Linha riscando
-      ctx.strokeStyle = '#94a3b8'
-      ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(pad + 40, y + 28)
-      ctx.lineTo(pad + 40 + origW, y + 28)
-      ctx.stroke()
-
-      // ── Preço atual (grande) ──────────────────────────
-      const curPrice = formatPrice(offer.price)
-      ctx.fillStyle = '#0f172a'
-      ctx.font = 'bold 64px system-ui'
-      ctx.fillText(curPrice, pad, y + 96)
-
-      // ── Tag "à vista" ─────────────────────────────────
-      ctx.fillStyle = '#64748b'
-      ctx.font = '20px system-ui'
-      ctx.fillText('à vista', pad + ctx.measureText(curPrice).width + 12, y + 96)
-
-      // ── Frete grátis ──────────────────────────────────
-      if (offer.freeShipping) {
-        ctx.fillStyle = '#16a34a'
-        ctx.font = 'bold 22px system-ui'
-        ctx.fillText('📦 Frete grátis', pad, y + 136)
-      }
-
-      // ── Rodapé ────────────────────────────────────────
-      const footerY = H - 80
-      ctx.strokeStyle = '#e2e8f0'
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(pad, footerY)
-      ctx.lineTo(W - pad, footerY)
-      ctx.stroke()
-
-      ctx.fillStyle = '#94a3b8'
-      ctx.font = '18px system-ui'
-      ctx.fillText('ofertafy.com.br', pad, footerY + 36)
-
-      // ── Download ──────────────────────────────────────
-      const safeName = offer.title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-') || 'oferta'
-      canvas.toBlob((blob) => {
-        if (!blob) { alert('Erro ao gerar PNG.'); setCopying(false); return }
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `oferta-${safeName}.png`
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        setTimeout(() => URL.revokeObjectURL(url), 2000)
-        setCopying(false)
-      }, 'image/png', 1.0)
-    } catch (err: any) {
-      console.error('Download erro:', err)
-      alert('Erro: ' + (err.message || 'Falha ao gerar imagem'))
-      setCopying(false)
-    }
-  }
-
-  /** Copia a legenda para a área de transferência (sem abrir Instagram) */
+  /** Copia a legenda para a área de transferência */
   function handleCopyLegenda() {
     if (!copy || copy.length < 10) { alert('Legenda vazia. Selecione um formato primeiro.'); return }
 
@@ -628,7 +468,6 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
       setCopied(true)
       setTimeout(() => setCopied(false), 3000)
     }).catch(() => {
-      // Fallback para navegadores antigos
       const ta = document.createElement('textarea')
       ta.value = copy
       ta.style.position = 'fixed'; ta.style.left = '-9999px'
@@ -644,177 +483,72 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-6 pb-10 overflow-y-auto" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 animate-fade-in">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <h2 className="text-lg font-bold text-slate-900">📢 Gerar Conteúdo de Marketing</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-          {/* ═══════════ COLUNA ESQUERDA: Preview do Card ═══════════ */}
+          {/* COLUNA ESQUERDA: Imagem do produto */}
           <div className="flex flex-col items-center">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
-              📸 Preview do Card
-            </p>
-
-            {/* Card — formato adaptável (ref para html2canvas) */}
-            <div ref={cardRef}
-                 className={`${cardWidth} bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200`}
-                 style={{ aspectRatio: '9/16' }}>
-              {/* Imagem do produto */}
-              <div className="relative w-full bg-slate-100" style={{ height: imageHeight }}>
-                <img
-                  src={offer.imageUrl}
-                  alt={offer.title}
-                  crossOrigin="anonymous"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    const t = e.target as HTMLImageElement
-                    if (t.src !== 'https://picsum.photos/seed/fallback/400/400') {
-                      t.crossOrigin = 'anonymous'
-                      t.src = 'https://picsum.photos/seed/fallback/400/400'
-                    }
-                  }}
-                />
-
-                {/* Tag de desconto */}
-                {offer.discountPct >= 10 && (
-                  <div className="absolute top-3 left-3 bg-red-600 text-white text-sm font-extrabold px-3 py-1 rounded-lg shadow-lg">
-                    -{offer.discountPct}% OFF
-                  </div>
-                )}
-
-                {/* Logo da loja no canto superior direito */}
-                <div
-                  className="absolute top-3 right-3 text-[10px] font-bold px-2.5 py-1 rounded-full shadow-lg"
-                  style={{ backgroundColor: theme.bg, color: theme.text }}
-                >
-                  {theme.logo}
-                </div>
-              </div>
-
-              {/* Conteúdo inferior */}
-              <div className="flex flex-col justify-between p-3.5" style={{ height: contentHeight }}>
-                {/* Título */}
-                <p className="text-xs font-semibold text-slate-800 leading-snug line-clamp-3 mb-auto">
-                  {offer.title.slice(0, 90)}
-                </p>
-
-                {/* Preços */}
-                <div className="mt-2">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-[11px] text-slate-400 line-through">
-                      {formatPrice(offer.originalPrice)}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-xl font-extrabold text-slate-900">
-                      {formatPrice(offer.price)}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-medium">à vista</span>
-                  </div>
-                </div>
-
-                {/* Rodapé */}
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-                  <span className="text-[9px] text-slate-400">ofertafy.com.br</span>
-                  {offer.freeShipping && (
-                    <span className="text-[9px] text-green-600 font-semibold">📦 Frete grátis</span>
-                  )}
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">📸 Imagem do Produto</p>
+            <div className="w-full max-w-[300px] bg-white rounded-2xl overflow-hidden shadow-lg border border-slate-200">
+              <img
+                src={offer.imageUrl}
+                alt={offer.title}
+                className="w-full aspect-square object-cover bg-slate-100"
+                onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/seed/fallback/400/400' }}
+              />
+              <div className="p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-slate-800 line-clamp-2">{offer.title.slice(0, 80)}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-lg font-extrabold text-slate-900">{formatPrice(offer.price)}</span>
+                  {offer.discountPct >= 10 && <span className="badge badge-red text-xs">-{offer.discountPct}%</span>}
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: theme.bg, color: theme.text }}>{theme.logo}</span>
                 </div>
               </div>
             </div>
-
-            {/* Dica de print */}
-            <p className="text-[10px] text-slate-400 mt-2 text-center">
-              🖼️ Print perfeito para Stories, Feed e WhatsApp
-            </p>
           </div>
 
-          {/* ═══════════ COLUNA DIREITA: Copy + Formatos ═══════════ */}
+          {/* COLUNA DIREITA: Copy + Botões */}
           <div className="space-y-3">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-              ✍️ Copy para Legenda
-            </p>
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">✍️ Copy para Legenda</p>
 
-            {/* Seletor de formato */}
             <div className="flex gap-1.5">
               {(['static', 'carrossel', 'reels'] as const).map((f) => (
                 <button key={f} onClick={() => setFormat(f)}
                   className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
-                    format === f
-                      ? 'gradient-primary text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    format === f ? 'gradient-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}>
                   {f === 'static' ? '📄 Post' : f === 'carrossel' ? '🖼️ Carrossel' : '🎬 Reels'}
                 </button>
               ))}
             </div>
 
-            {/* Copy gerada */}
             <div className="bg-slate-900 text-white rounded-xl p-3.5 text-xs leading-relaxed whitespace-pre-wrap font-sans max-h-56 overflow-y-auto">
               {copy}
             </div>
 
-            {/* Botão 1: Download da imagem */}
-            <button
-              onClick={handleDownload}
-              disabled={copying}
-              className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all text-sm flex items-center justify-center gap-2"
-            >
-              {copying ? '⏳ Renderizando...' : '📥 Baixar Card (Imagem)'}
+            <button onClick={handleDownloadImage}
+              className="w-full py-2.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-all text-sm">
+              📥 Baixar Imagem do Produto
             </button>
 
-            {/* Botão 2: Copiar legenda */}
-            <button
-              onClick={handleCopyLegenda}
-              className={`w-full py-2.5 font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-2 ${
-                copied
-                  ? 'bg-green-500 text-white'
-                  : 'bg-slate-700 text-white hover:bg-slate-800'
-              }`}
-            >
+            <button onClick={handleCopyLegenda}
+              className={`w-full py-2.5 font-bold rounded-xl transition-all text-sm ${
+                copied ? 'bg-green-500 text-white' : 'bg-slate-700 text-white hover:bg-slate-800'
+              }`}>
               {copied ? '✅ Copiado!' : '📋 Copiar Legenda'}
             </button>
 
             <p className="text-[10px] text-slate-400 text-center">
-              1️⃣ Baixe a imagem 2️⃣ Copie a legenda e cole no Instagram
+              1️⃣ Baixe a imagem 2️⃣ Copie a legenda 3️⃣ Cole no Instagram
             </p>
           </div>
         </div>
       </div>
     </div>
   )
-}
-
-/** Desenha retângulo com bordas arredondadas */
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath()
-  ctx.moveTo(x + r, y)
-  ctx.lineTo(x + w - r, y)
-  ctx.arcTo(x + w, y, x + w, y + r, r)
-  ctx.lineTo(x + w, y + h - r)
-  ctx.arcTo(x + w, y + h, x + w - r, y + h, r)
-  ctx.lineTo(x + r, y + h)
-  ctx.arcTo(x, y + h, x, y + h - r, r)
-  ctx.lineTo(x, y + r)
-  ctx.arcTo(x, y, x + r, y, r)
-  ctx.closePath()
-  ctx.fill()
-}
-
-/** Quebra texto em múltiplas linhas */
-function wrapText(ctx: CanvasRenderingContext2D, text: string, maxW: number): string[] {
-  const words = text.split(' ')
-  const lines: string[] = []
-  let line = ''
-  for (const w of words) {
-    const test = line ? line + ' ' + w : w
-    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w }
-    else { line = test }
-  }
-  if (line) lines.push(line)
-  return lines
 }
 
 /** Gera copy persuasiva com gatilhos de urgência */
