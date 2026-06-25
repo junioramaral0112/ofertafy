@@ -456,13 +456,26 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
   const imageHeight = isReels ? '70%' : '55%'
   const contentHeight = isReels ? '30%' : '45%'
 
-  /** Carrega imagem em um objeto Image (com fallback) */
-  function loadImage(src: string): Promise<HTMLImageElement> {
+  /** Carrega imagem sem crossOrigin (evita bloqueio CORS no canvas) */
+  function loadImageForCanvas(src: string): Promise<HTMLImageElement | null> {
     return new Promise((resolve) => {
+      // Tenta 1: sem crossOrigin (funciona com a maioria das URLs)
       const img = new Image()
-      img.crossOrigin = 'anonymous'
       img.onload = () => resolve(img)
-      img.onerror = () => { img.src = 'https://picsum.photos/seed/fallback/400/400' }
+      img.onerror = () => {
+        // Tenta 2: com crossOrigin
+        const img2 = new Image()
+        img2.crossOrigin = 'anonymous'
+        img2.onload = () => resolve(img2)
+        img2.onerror = () => {
+          // Tenta 3: placeholder que SEMPRE funciona
+          const img3 = new Image()
+          img3.onload = () => resolve(img3)
+          img3.onerror = () => resolve(null)
+          img3.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect fill="#e2e8f0" width="400" height="400"/><text fill="#94a3b8" font-size="48" font-family="sans-serif" text-anchor="middle" x="200" y="220">📦</text></svg>')
+        }
+        img2.src = src
+      }
       img.src = src
     })
   }
@@ -485,9 +498,20 @@ function MarketingModal({ offer, onClose }: { offer: Offer; onClose: () => void 
 
       // ── Imagem do produto ────────────────────────────
       const imgEl = cardRef.current.querySelector('img') as HTMLImageElement | null
-      const img = await loadImage(imgEl?.src || '')
+      const img = await loadImageForCanvas(imgEl?.src || '')
       const imgH = H * 0.52
-      ctx.drawImage(img, 0, 0, W, imgH)
+      if (img) {
+        ctx.drawImage(img, 0, 0, W, imgH)
+      } else {
+        // Placeholder desenhado manualmente
+        ctx.fillStyle = '#e2e8f0'
+        ctx.fillRect(0, 0, W, imgH)
+        ctx.fillStyle = '#94a3b8'
+        ctx.font = '80px system-ui'
+        ctx.textAlign = 'center'
+        ctx.fillText('📦', W / 2, imgH / 2 + 30)
+        ctx.textAlign = 'start'
+      }
 
       // Sombra suave na transição imagem→texto
       const grad = ctx.createLinearGradient(0, imgH - 60, 0, imgH)
