@@ -1,5 +1,5 @@
 import cron from 'node-cron'
-import { fetchAllDeals } from './fetcher'
+import { fetchAllDeals } from './fetch-all-deals'
 import { dispatchDailyOffers } from '@/services/groupNotifier'
 
 let cronStarted = false

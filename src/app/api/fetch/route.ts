@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchAllDeals } from '@/lib/fetcher'
+import { fetchAllDeals } from '@/lib/fetch-all-deals'
 
 export const dynamic = 'force-dynamic'
 
