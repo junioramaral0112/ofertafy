@@ -38,13 +38,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.8,
   }))
 
-  // ── Produtos (top 5000 por score promocional) ────
+  // ── Produtos (top 50 por score — limite rígido para build rápido) ──
+  // ⚠️  5000 produtos causava Timeout/OOM na Vercel (plano Hobby).
+  //      Mantemos 50 — o restante é indexado via link discovery.
   let productRoutes: MetadataRoute.Sitemap = []
   try {
     const topOffers = await prisma.offer.findMany({
       select: { id: true, updatedAt: true },
       orderBy: { scorePromocional: 'desc' },
-      take: 5000,
+      take: 50,
     })
     productRoutes = topOffers.map((o) => ({
       url: `${baseUrl}/produto/${o.id}`,
