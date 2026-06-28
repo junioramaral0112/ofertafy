@@ -1,9 +1,9 @@
 import type { MetadataRoute } from 'next'
-import { CATEGORIES, STORES } from '@/lib/utils'
+import { CATEGORIES, STORES, getBaseUrl } from '@/lib/utils'
 import { prisma } from '@/lib/prisma'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ofertafy.com.br'
+  const baseUrl = getBaseUrl()
   const now = new Date()
 
   // ── Rotas estáticas ──────────────────────────────

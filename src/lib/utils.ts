@@ -1,3 +1,50 @@
+// ═══════════════════════════════════════════════════════════
+// 🔒 URL À PROVA DE BALA
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Retorna SEMPRE uma URL base válida com protocolo https://.
+ * PRIORIDADE: env > fallback hardcoded.
+ *
+ * ⚠️  NUNCA use `new URL(process.env.NEXT_PUBLIC_SITE_URL)` diretamente —
+ *     se a variável vier sem protocolo (ex: "ofertafy.com.br" ou
+ *     "www.ofertafy.com.br"), o construtor lança ERR_INVALID_URL.
+ */
+export function getBaseUrl(): string {
+  const raw =
+    process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ofertafy.com.br'
+
+  if (!raw) return 'https://www.ofertafy.com.br'
+
+  const trimmed = raw.trim()
+
+  // Já tem protocolo → confia
+  if (trimmed.startsWith('https://') || trimmed.startsWith('http://')) {
+    return trimmed.replace(/\/+$/, '') // remove trailing slash
+  }
+
+  // Ex: "www.ofertafy.com.br" ou "ofertafy.com.br"
+  return `https://${trimmed.replace(/^\/+/, '')}`
+}
+
+/**
+ * Versão segura de new URL() — nunca lança exceção.
+ * Retorna null se a URL for inválida (em vez de crashar).
+ */
+export function safeUrl(input: string): URL | null {
+  try {
+    const raw = input.trim()
+    if (!raw) return null
+    // Força https se não tiver protocolo
+    const withProto = raw.startsWith('http')
+      ? raw
+      : `https://${raw.replace(/^\/+/, '')}`
+    return new URL(withProto)
+  } catch {
+    return null
+  }
+}
+
 export function formatPrice(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -72,7 +119,9 @@ export function generateAffiliateUrl(
     tiktokAffiliateId?: string
   }
 ): string {
-  const url = new URL(productUrl)
+  // 🔒 Blindagem: se a URL vier inválida, retorna o input como fallback
+  const url = safeUrl(productUrl)
+  if (!url) return productUrl
 
   switch (store) {
     case 'mercadolivre':

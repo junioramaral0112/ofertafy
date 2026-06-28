@@ -5,10 +5,11 @@ import './globals.css'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import WhatsAppFloat from '@/components/WhatsAppFloat'
+import { getBaseUrl } from '@/lib/utils'
 
 const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-F1R04L8N36'
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ofertafy.com.br'
+const SITE_URL = getBaseUrl()
 const SITE_NAME = 'Ofertafy'
 const SITE_DESCRIPTION =
   'As melhores ofertas do Mercado Livre, Magalu, Shopee e Amazon em um só lugar. Compare preços, histórico e cupons de desconto atualizados.'
