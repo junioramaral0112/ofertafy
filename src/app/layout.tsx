@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import Script from 'next/script'
 import './globals.css'
 import Header from '@/components/Header'
@@ -72,9 +73,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL,
   },
-  verification: {
-    google: process.env.GOOGLE_VERIFICATION,
-  },
+  verification: process.env.GOOGLE_VERIFICATION
+    ? { google: process.env.GOOGLE_VERIFICATION }
+    : undefined,
 }
 
 export default function RootLayout({
@@ -107,19 +108,25 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
       </head>
       <body className="min-h-full flex flex-col bg-slate-50">
-        <Header />
+        <Suspense fallback={<div className="h-16 bg-white border-b border-slate-200" />}>
+          <Header />
+        </Suspense>
         <main className="flex-1">{children}</main>
         <Footer />
-        <WhatsAppFloat />
+        <Suspense fallback={null}>
+          <WhatsAppFloat />
+        </Suspense>
 
         {/* Google Analytics 4 */}
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-          strategy="afterInteractive"
-        />
-        <Script id="ga4-config" strategy="afterInteractive">
-          {`window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${GA_ID}');`}
-        </Script>
+        <Suspense fallback={null}>
+          <Script
+            src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+            strategy="afterInteractive"
+          />
+          <Script id="ga4-config" strategy="afterInteractive">
+            {`window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag('js', new Date()); gtag('config', '${GA_ID}');`}
+          </Script>
+        </Suspense>
       </body>
     </html>
   )
