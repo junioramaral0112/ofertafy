@@ -1,10 +1,10 @@
 /**
  * 🔧 CORREÇÃO EM LOTE — Links do Mercado Livre com domínio duplicado
  *
- * Corrige URLs do tipo:
- *   https://www.mercadolivre.com.br/produto.mercadolivre.com.br/MLB-...
- * Para:
- *   https://www.mercadolivre.com.br/MLB-...
+ * Padrão inválido:
+ *   https://www.mercadolivre.com.br/produto.mercadolivre.com.br/MLB-...?matt_tool=...
+ * Padrão correto:
+ *   https://www.mercadolivre.com.br/MLB-...?matt_tool=...
  *
  * Uso: npx tsx scripts/corrigir-links-ml.ts
  */
@@ -13,93 +13,87 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-function fixDuplicatedDomain(url: string): { fixed: string; changed: boolean } {
-  // Padrão 1: mercadolivre.com.br/produto.mercadolivre.com.br/
-  if (url.includes('mercadolivre.com.br/produto.mercadolivre.com.br')) {
-    const fixed = url.replace(
-      /mercadolivre\.com\.br\/produto\.mercadolivre\.com\.br\//,
-      'mercadolivre.com.br/',
-    )
-    return { fixed, changed: true }
-  }
+// ── Diagnóstico ──────────────────────────────────────────
+async function diagnosticar() {
+  // Busca TODOS os ML e filtra em memória (evita problemas de
+  // case-sensitivity / encoding no contains do Prisma/PostgreSQL)
+  const todos = await prisma.offer.findMany({
+    where: { store: 'mercadolivre' },
+    select: { id: true, url: true, title: true },
+  })
 
-  // Padrão 2: mercadolivre.com.br/www.mercadolivre.com.br/
-  if (url.includes('mercadolivre.com.br/www.mercadolivre.com.br')) {
-    const fixed = url.replace(
-      /mercadolivre\.com\.br\/www\.mercadolivre\.com\.br\//,
-      'mercadolivre.com.br/',
-    )
-    return { fixed, changed: true }
-  }
+  const dups = todos.filter(
+    (o) =>
+      o.url.includes('mercadolivre.com.br/produto.mercadolivre.com.br') ||
+      o.url.includes('mercadolivre.com.br/www.mercadolivre.com.br'),
+  )
 
-  return { fixed: url, changed: false }
+  console.log(`📊 ML total: ${todos.length} | Com domínio duplicado: ${dups.length}`)
+  return dups
 }
 
+// ── Correção ─────────────────────────────────────────────
+function corrigirUrl(url: string): string {
+  // Padrão 1: ...mercadolivre.com.br/produto.mercadolivre.com.br/... → ...mercadolivre.com.br/...
+  let fixed = url.replace(
+    /mercadolivre\.com\.br\/produto\.mercadolivre\.com\.br\//g,
+    'mercadolivre.com.br/',
+  )
+  // Padrão 2: ...mercadolivre.com.br/www.mercadolivre.com.br/... → ...mercadolivre.com.br/...
+  fixed = fixed.replace(
+    /mercadolivre\.com\.br\/www\.mercadolivre\.com\.br\//g,
+    'mercadolivre.com.br/',
+  )
+  return fixed
+}
+
+// ── Main ─────────────────────────────────────────────────
 async function main() {
-  console.log('🔧 Buscando ofertas do Mercado Livre com domínio duplicado...\n')
+  console.log('🔧 CORREÇÃO DE LINKS ML COM DOMÍNIO DUPLICADO\n')
 
-  const offers = await prisma.offer.findMany({
-    where: {
-      store: 'mercadolivre',
-      url: { contains: 'mercadolivre.com.br/produto.mercadolivre.com.br' },
-    },
-    select: { id: true, title: true, url: true },
-  })
+  const dups = await diagnosticar()
 
-  // Também busca o outro padrão
-  const offers2 = await prisma.offer.findMany({
-    where: {
-      store: 'mercadolivre',
-      url: { contains: 'mercadolivre.com.br/www.mercadolivre.com.br' },
-    },
-    select: { id: true, title: true, url: true },
-  })
-
-  // Junta sem duplicar por ID
-  const seen = new Set<string>()
-  const all = [...offers, ...offers2].filter((o) => {
-    if (seen.has(o.id)) return false
-    seen.add(o.id)
-    return true
-  })
-
-  if (all.length === 0) {
-    console.log('✅ Nenhum link com domínio duplicado encontrado!')
+  if (dups.length === 0) {
+    console.log('✅ Nenhum link para corrigir!')
     await prisma.$disconnect()
     return
   }
 
-  console.log(`📦 ${all.length} ofertas para corrigir\n`)
+  console.log(`\n🔨 Corrigindo ${dups.length} ofertas...\n`)
 
-  let corrigidos = 0
+  let ok = 0
   let falhas = 0
 
-  for (const o of all) {
-    const { fixed, changed } = fixDuplicatedDomain(o.url)
+  for (const o of dups) {
+    const antes = o.url
+    const depois = corrigirUrl(antes)
 
-    if (!changed) {
-      console.log(`⚠️  ${o.id.slice(0, 12)} — já estava correto?`)
+    if (antes === depois) {
+      console.log(`⚠️  ${o.id.slice(0, 12)} — sem alteração`)
       continue
     }
 
     try {
       await prisma.offer.update({
         where: { id: o.id },
-        data: { url: fixed },
+        data: { url: depois },
       })
       console.log(`✅ ${o.title.slice(0, 60)}`)
-      console.log(`   ANTES:  ${o.url.slice(0, 120)}`)
-      console.log(`   DEPOIS: ${fixed.slice(0, 120)}`)
-      console.log('')
-      corrigidos++
+      console.log(`   ANTES:  ${antes.slice(0, 110)}`)
+      console.log(`   DEPOIS: ${depois.slice(0, 110)}`)
+      ok++
     } catch (e: any) {
       console.error(`❌ ${o.id}: ${e.message?.slice(0, 100)}`)
       falhas++
     }
   }
 
-  console.log('═'.repeat(60))
-  console.log(`✅ ${corrigidos} corrigidos | ❌ ${falhas} falhas`)
+  // ── Re-verificação ──────────────────────────────────
+  console.log('\n🔍 Re-verificando...')
+  const restam = await diagnosticar()
+
+  console.log(`\n═══════════════════════════════════════`)
+  console.log(`✅ Corrigidos: ${ok}  |  ❌ Falhas: ${falhas}  |  📦 Restam: ${restam.length}`)
   console.log('')
 
   await prisma.$disconnect()
