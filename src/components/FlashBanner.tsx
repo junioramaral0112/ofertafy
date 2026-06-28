@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import type { OfferData } from '@/types'
-import { formatPrice, sanitizeAffiliateUrl } from '@/lib/utils'
+import { formatPrice, getBridgeUrl } from '@/lib/utils'
 
 export default function FlashBanner({ offers }: { offers: OfferData[] }) {
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -126,9 +126,7 @@ export default function FlashBanner({ offers }: { offers: OfferData[] }) {
 
             {/* Botão Ver agora → */}
             <a
-              href={sanitizeAffiliateUrl(offer.url, offer.store)}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={getBridgeUrl(offer.url, offer.storeLabel)}
               className="text-center bg-red-600 hover:bg-red-700 text-white font-bold py-2 md:py-2.5 px-5 md:px-8 rounded-xl transition-colors shadow-lg shadow-red-600/25 text-sm md:text-base whitespace-nowrap"
             >
               Ver agora →

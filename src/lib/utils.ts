@@ -45,6 +45,33 @@ export function safeUrl(input: string): URL | null {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// PÁGINA PONTE — Blindagem anti-deep-link
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Retorna a URL da Página Ponte (/ir) que blinda o link de afiliado
+ * contra o deep linking de apps nativos (Android/iOS).
+ *
+ * Uso no site (href relativo):
+ *   <a href={getBridgeUrl(offer.url, offer.storeLabel)}>Ver Oferta</a>
+ *
+ * Uso para WhatsApp/Telegram (URL absoluta):
+ *   getBridgeUrl(offer.url, offer.storeLabel, true)
+ *
+ * @param rawUrl    URL de destino (ex: https://www.mercadolivre.com.br/...)
+ * @param storeName Nome exibível da loja (ex: "Mercado Livre")
+ * @param absolute  Se true, retorna URL absoluta (para uso externo ao site)
+ */
+export function getBridgeUrl(
+  rawUrl: string,
+  storeName: string,
+  absolute?: boolean,
+): string {
+  const path = `/ir?url=${encodeURIComponent(rawUrl)}&loja=${encodeURIComponent(storeName)}`
+  return absolute ? `${getBaseUrl()}${path}` : path
+}
+
 export function formatPrice(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',

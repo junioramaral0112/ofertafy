@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, getBridgeUrl } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 3600 // 1 hora
@@ -43,7 +43,7 @@ export async function GET() {
       <description><![CDATA[
         <p>De ${formatPrice(o.originalPrice)} por <strong>${formatPrice(o.price)}</strong> (-${o.discountPct}% OFF)</p>
         <p>Loja: ${o.storeLabel}</p>
-        <p><a href="${o.url}">Ver oferta na ${o.storeLabel} →</a></p>
+        <p><a href="${getBridgeUrl(o.url, o.storeLabel, true)}">Ver oferta na ${o.storeLabel} →</a></p>
         ${o.imageUrl ? `<img src="${o.imageUrl}" alt="${o.title.slice(0, 60)}" />` : ''}
       ]]></description>
       <pubDate>${new Date(o.createdAt).toUTCString()}</pubDate>

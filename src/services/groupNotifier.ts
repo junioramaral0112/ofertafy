@@ -17,7 +17,7 @@
  */
 
 import { prisma } from '@/lib/prisma'
-import { formatPrice, sanitizeAffiliateUrl } from '@/lib/utils'
+import { formatPrice, getBridgeUrl } from '@/lib/utils'
 
 // ---------------------------------------------------------------------------
 // Constantes
@@ -323,7 +323,7 @@ function mapOffer(o: {
     discountPct: o.discountPct,
     store: o.store,
     storeLabel: o.storeLabel,
-    url: sanitizeAffiliateUrl(o.url, o.store),
+    url: getBridgeUrl(o.url, o.storeLabel, true),
     freeShipping: o.freeShipping,
     installment: o.installment,
   }

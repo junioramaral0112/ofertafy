@@ -3,7 +3,7 @@ import { getOfferById } from '@/lib/fetcher'
 import PriceChart from '@/components/PriceChart'
 import OfferCard from '@/components/OfferCard'
 import Breadcrumbs from '@/components/Breadcrumbs'
-import { formatPrice, sanitizeAffiliateUrl } from '@/lib/utils'
+import { formatPrice, getBridgeUrl } from '@/lib/utils'
 import { notFound } from 'next/navigation'
 
 type Props = { params: Promise<{ id: string }> }
@@ -130,9 +130,7 @@ export default async function ProdutoPage({ params }: Props) {
               )}
 
               <a
-                href={sanitizeAffiliateUrl(offer.url, offer.store)}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={getBridgeUrl(offer.url, offer.storeLabel)}
                 className="block text-center gradient-primary text-white font-bold py-3.5 px-8 rounded-xl mt-4 hover:opacity-95 transition-opacity text-base md:text-lg"
               >
                 Ver oferta na {offer.storeLabel} →
