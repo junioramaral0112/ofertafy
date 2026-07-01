@@ -83,3 +83,24 @@ model Coupon {
   @@index([isActive])
   @@index([expiryDate])
 }
+
+model Campaign {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  store       String
+  description String?
+  bannerUrl   String?
+  startDate   DateTime
+  endDate     DateTime
+  color       String    @default("#10b981")
+  categories  String    @default("[]") // JSON array de slugs
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([store])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([isActive])
+}

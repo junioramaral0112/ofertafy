@@ -1,10 +1,11 @@
 import Link from 'next/link'
 import { formatPrice } from '@/lib/utils'
-import { calculateIndiceOfertafy } from '@/lib/ia'
+import { calculateIndiceOfertafy, isVerifiedOffer } from '@/lib/ia'
 import type { OfferData } from '@/types'
 
 export default function OfferCard({ offer, compact }: { offer: OfferData; compact?: boolean }) {
   const indice = calculateIndiceOfertafy(offer)
+  const verified = isVerifiedOffer(offer)
   const scoreColor = indice.score >= 80 ? 'text-green-600' : indice.score >= 60 ? 'text-emerald-600' : indice.score >= 35 ? 'text-amber-600' : 'text-red-500'
   return (
     <Link
@@ -20,9 +21,16 @@ export default function OfferCard({ offer, compact }: { offer: OfferData; compac
           loading="lazy"
         />
 
+        {/* Verified badge */}
+        {verified && (
+          <span className="absolute top-3 left-3 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg z-10">
+            ✔ Verificada
+          </span>
+        )}
+
         {/* Discount badge */}
         {offer.discountPct >= 15 && (
-          <span className="discount-badge absolute top-3 left-3 shadow-lg">
+          <span className={`discount-badge absolute ${verified ? 'top-10' : 'top-3'} left-3 shadow-lg`}>
             -{offer.discountPct}%
           </span>
         )}

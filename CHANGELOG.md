@@ -1,5 +1,20 @@
 # Changelog — Ofertafy
 
+## [v2.4.0] — 2026-07-01 — Sprint 4 (Centro de Inteligência de Promoções)
+
+### Adicionado
+- **Calendário de Promoções** (`/promocoes`): cards visuais com status, loja, datas
+- **Páginas SEO por campanha** (`/promocoes/[slug]`): FAQ, ofertas, metadata
+- **9 campanhas cadastradas**: Shopee (3), ML (2), Amazon (3), Magalu (1)
+- **Selo Oferta Verificada**: ✔ badge verde no card (critérios: Índice >= 60 + desconto real + preço abaixo da média)
+- **Modelo Campaign** no Prisma com slug, datas, loja, descrição
+
+### Alterado
+- OfferCard: selo verificado no canto superior
+- IA: +isVerifiedOffer()
+
+---
+
 ## [v2.3.0] — 2026-07-01 — Sprint 3 (IA e Confiança)
 
 ### Adicionado

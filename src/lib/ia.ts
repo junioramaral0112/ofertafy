@@ -490,3 +490,33 @@ export const RECOMMENDATION_COLORS: Record<Recommendation, string> = {
   wait: 'text-amber-600 bg-amber-50 border-amber-200',
   avoid: 'text-red-600 bg-red-50 border-red-200',
 }
+
+// ═══════════════════════════════════════════════════════════
+// SELO OFERTA VERIFICADA
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Determina se a oferta merece o selo "Oferta Verificada".
+ *
+ * Critérios (todos devem ser atendidos):
+ * 1. Índice Ofertafy >= 60
+ * 2. Desconto não é falso (detectFakeDiscount retorna isFake=false)
+ * 3. Preço atual abaixo da média histórica
+ */
+export function isVerifiedOffer(
+  offer: OfferData,
+  history?: PriceHistoryData[],
+): boolean {
+  const indice = calculateIndiceOfertafy(offer, history)
+  if (indice.score < 60) return false
+
+  const fake = detectFakeDiscount(offer, history)
+  if (fake.isFake && fake.confidence >= 60) return false
+
+  if (history && history.length >= 2) {
+    const avg = history.reduce((s, h) => s + h.price, 0) / history.length
+    if (offer.price > avg) return false
+  }
+
+  return true
+}
