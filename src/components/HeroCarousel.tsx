@@ -37,104 +37,69 @@ export default function HeroCarousel({ offers }: HeroCarouselProps) {
 
   return (
     <section className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 py-3 md:py-6">
-        <div className="flex flex-col md:flex-row gap-3 md:gap-5 items-stretch">
+      <div className="max-w-7xl mx-auto px-4 py-1.5">
+        <div className="flex gap-2 items-center">
 
-          {/* ─── COLUNA ESQUERDA: Imagem (40%) ─── */}
-          <div className="relative w-full md:w-[40%] aspect-[4/3] md:aspect-auto md:max-h-[330px] rounded-2xl overflow-hidden bg-white shrink-0">
+          {/* ─── IMAGEM (80px) ─── */}
+          <div className="relative w-[80px] h-[80px] md:w-[90px] md:h-[90px] rounded-lg overflow-hidden bg-white shrink-0">
             <img
               src={offer.imageUrl}
               alt={offer.title}
-              className="w-full h-full object-contain p-2 md:p-3"
+              className="w-full h-full object-contain p-1"
               loading="eager"
             />
 
-            {/* Badge loja */}
-            <span className={`absolute top-2 left-2 text-[10px] md:text-xs font-bold px-2 py-0.5 rounded-full shadow ${storeBadgeStyle(offer.store)}`}>
-              {offer.storeLabel}
-            </span>
-
-            {/* Desconto */}
             {offer.discountPct >= 10 && (
-              <div className="absolute top-2 right-2 bg-red-500 text-white rounded-lg px-2 py-1 text-center shadow-lg">
-                <div className="text-base md:text-lg font-extrabold leading-none">-{offer.discountPct}%</div>
+              <div className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded text-[9px] font-extrabold px-1 leading-tight">
+                -{offer.discountPct}%
               </div>
             )}
 
-            {/* Indicadores */}
             {slides.length > 1 && (
-              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5">
+              <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
                 {slides.map((_, i) => (
                   <button key={i} onClick={() => setCurrent(i)}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${i === current ? 'bg-slate-800 w-4' : 'bg-slate-300'}`}
+                    className={`w-1 h-1 rounded-full transition-all ${i === current ? 'bg-slate-800 w-2' : 'bg-slate-300'}`}
                     aria-label={`Slide ${i + 1}`} />
                 ))}
               </div>
             )}
-
-            {/* Setas */}
-            {slides.length > 1 && (
-              <>
-                <button onClick={prev} className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/80 rounded-full shadow flex items-center justify-center hover:bg-white text-sm" aria-label="Anterior">‹</button>
-                <button onClick={next} className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/80 rounded-full shadow flex items-center justify-center hover:bg-white text-sm" aria-label="Próximo">›</button>
-              </>
-            )}
           </div>
 
-          {/* ─── COLUNA DIREITA: Info (60%) ─── */}
-          <div className="flex-1 flex flex-col justify-center text-white min-w-0">
-            {/* Título — 2 linhas max */}
-            <h2 className="text-lg md:text-xl font-extrabold leading-tight line-clamp-2 mb-2">
+          {/* ─── INFO ─── */}
+          <div className="flex-1 flex flex-col justify-center text-white min-w-0 gap-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className={`text-[9px] font-bold px-1 py-0.5 rounded ${storeBadgeStyle(offer.store)}`}>
+                {offer.storeLabel}
+              </span>
+              {offer.freeShipping && <span className="text-[9px] text-white/50">📦 Grátis</span>}
+            </div>
+            <h2 className="text-xs md:text-sm font-bold leading-tight line-clamp-2">
               {offer.title}
             </h2>
-
-            {/* Preço + desconto — inline compacto */}
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-2xl md:text-3xl font-extrabold text-green-400">
+            <div className="flex items-center gap-2">
+              <span className="text-base md:text-lg font-extrabold text-green-400">
                 {formatPrice(offer.price)}
               </span>
               {offer.originalPrice > offer.price && (
-                <>
-                  <span className="text-sm text-white/40 line-through">
-                    {formatPrice(offer.originalPrice)}
-                  </span>
-                  <span className="text-xs text-green-400 font-bold">
-                    -{offer.discountPct}%
-                  </span>
-                </>
-              )}
-            </div>
-
-            {/* Economia + Frete + Parcelamento — 1 linha */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mb-2">
-              {offer.originalPrice > offer.price && (
-                <span className="text-green-400">
-                  Economize {formatPrice(offer.originalPrice - offer.price)}
+                <span className="text-[11px] text-white/40 line-through">
+                  {formatPrice(offer.originalPrice)}
                 </span>
               )}
-              {offer.freeShipping && <span className="text-white/60">📦 Frete grátis</span>}
-              {offer.installment && <span className="text-white/60">💳 {offer.installment}</span>}
+              <span className="text-[10px] text-white/30">🤖{indice.score}</span>
+              <a href={getBridgeUrl(offer.url, offer.storeLabel)}
+                className="ml-auto text-[11px] bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2.5 rounded-md transition-all shrink-0">
+                Ver Oferta →
+              </a>
             </div>
-
-            {/* Índice Ofertafy — barra compacta (40px max) */}
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs text-white/50">🤖 Índice Ofertafy</span>
-              <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden max-w-[120px]">
-                <div className={`h-full rounded-full ${scoreColor}`} style={{ width: `${indice.score}%` }} />
-              </div>
-              <span className={`text-xs font-bold ${indice.score >= 80 ? 'text-green-400' : indice.score >= 60 ? 'text-emerald-400' : indice.score >= 35 ? 'text-amber-400' : 'text-red-400'}`}>
-                {indice.score}/100
-              </span>
-            </div>
-
-            {/* CTA */}
-            <a
-              href={getBridgeUrl(offer.url, offer.storeLabel)}
-              className="inline-block w-full md:w-[220px] text-center bg-green-500 hover:bg-green-600 text-white font-bold py-2.5 px-6 rounded-xl text-sm md:text-base transition-all hover:scale-[1.02] shadow-lg shadow-green-500/20"
-            >
-              Ver Oferta →
-            </a>
           </div>
+
+          {slides.length > 1 && (
+            <div className="hidden md:flex flex-col gap-0.5 shrink-0">
+              <button onClick={prev} className="w-5 h-5 bg-white/10 rounded flex items-center justify-center hover:bg-white/20 text-white text-[10px]" aria-label="Anterior">▲</button>
+              <button onClick={next} className="w-5 h-5 bg-white/10 rounded flex items-center justify-center hover:bg-white/20 text-white text-[10px]" aria-label="Próximo">▼</button>
+            </div>
+          )}
         </div>
       </div>
     </section>

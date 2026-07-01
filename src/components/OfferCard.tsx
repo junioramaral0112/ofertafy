@@ -6,14 +6,15 @@ import type { OfferData } from '@/types'
 export default function OfferCard({ offer, compact }: { offer: OfferData; compact?: boolean }) {
   const indice = calculateIndiceOfertafy(offer)
   const verified = isVerifiedOffer(offer)
-  const scoreColor = indice.score >= 80 ? 'text-green-600' : indice.score >= 60 ? 'text-emerald-600' : indice.score >= 35 ? 'text-amber-600' : 'text-red-500'
+  const scoreColor = indice.score >= 80 ? 'bg-green-500' : indice.score >= 60 ? 'bg-emerald-500' : indice.score >= 35 ? 'bg-amber-500' : 'bg-red-500'
+
   return (
     <Link
       href={`/produto/${offer.id}`}
-      className="card-hover bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col group"
+      className="bg-white rounded-xl border border-slate-100 overflow-hidden flex flex-col group hover:shadow-md hover:border-slate-200 transition-all duration-200"
     >
-      {/* Image */}
-      <div className="relative aspect-square bg-slate-100 overflow-hidden">
+      {/* Imagem com badges sobrepostos */}
+      <div className="relative aspect-square bg-slate-50 overflow-hidden">
         <img
           src={offer.imageUrl}
           alt={offer.title}
@@ -21,89 +22,56 @@ export default function OfferCard({ offer, compact }: { offer: OfferData; compac
           loading="lazy"
         />
 
-        {/* Verified badge */}
-        {verified && (
-          <span className="absolute top-3 left-3 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg z-10">
-            ✔ Verificada
-          </span>
-        )}
-
-        {/* Discount badge */}
-        {offer.discountPct >= 15 && (
-          <span className={`discount-badge absolute ${verified ? 'top-10' : 'top-3'} left-3 shadow-lg`}>
-            -{offer.discountPct}%
-          </span>
-        )}
-
-        {/* Store badge */}
-        <StoreBadge store={offer.store} />
-
-        {/* Free shipping */}
-        {offer.freeShipping && (
-          <span className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm text-green-600 text-xs font-semibold px-2 py-1 rounded-lg">
-            📦 Frete grátis
-          </span>
-        )}
-
-        {/* Flash timer */}
-        {offer.isFlash && offer.flashEndsAt && (
-          <div className="absolute top-3 right-3">
-            <FlashTimer endAt={offer.flashEndsAt} />
+        {/* Badges no topo */}
+        <div className="absolute top-2 left-2 right-2 flex items-start justify-between gap-1">
+          <div className="flex flex-col gap-1">
+            {verified && (
+              <span className="text-[9px] font-bold bg-green-500 text-white px-1.5 py-0.5 rounded">
+                ✔ Verificada
+              </span>
+            )}
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${storeBadge(offer.store)}`}>
+              {offer.storeLabel}
+            </span>
           </div>
-        )}
+          {offer.discountPct >= 10 && (
+            <span className="text-[10px] font-extrabold bg-red-500 text-white px-1.5 py-0.5 rounded">
+              -{offer.discountPct}%
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="p-4 flex flex-col flex-1">
-        <h3 className="text-sm font-medium text-slate-800 line-clamp-2 mb-2 flex-1 leading-snug group-hover:text-primary transition-colors">
+      {/* Conteúdo */}
+      <div className="p-3 flex flex-col flex-1">
+        <h3 className="text-xs font-medium text-slate-800 line-clamp-2 mb-2 flex-1 leading-snug group-hover:text-primary transition-colors">
           {offer.title}
         </h3>
 
-        {/* Prices */}
         <div className="mt-auto">
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-extrabold text-slate-900">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-lg font-extrabold text-slate-900">
               {formatPrice(offer.price)}
             </span>
             {offer.originalPrice > offer.price && (
-              <span className="text-sm text-slate-400 line-through">
+              <span className="text-[11px] text-slate-400 line-through">
                 {formatPrice(offer.originalPrice)}
               </span>
             )}
           </div>
 
-          {/* Installment */}
           {offer.installment && (
-            <p className="text-xs text-slate-500 mt-1">{offer.installment}</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">{offer.installment}</p>
           )}
 
-          {/* Índice Ofertafy */}
-          {!compact && (
-            <div className="mt-2 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px]">🤖</span>
-                <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${
-                      indice.score >= 80 ? 'bg-green-500'
-                      : indice.score >= 60 ? 'bg-emerald-500'
-                      : indice.score >= 35 ? 'bg-amber-500'
-                      : 'bg-red-400'
-                    }`}
-                    style={{ width: `${indice.score}%` }}
-                  />
-                </div>
-                <span className={`text-xs font-bold ${scoreColor}`}>{indice.score}</span>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-50">
+            <span className="text-[10px] text-slate-400">{offer.category}</span>
+            <div className="flex items-center gap-1">
+              <div className="h-1 bg-slate-100 rounded-full w-10 overflow-hidden">
+                <div className={`h-full rounded-full ${scoreColor}`} style={{ width: `${indice.score}%` }} />
               </div>
+              <span className="text-[10px] font-bold text-slate-500">{indice.score}</span>
             </div>
-          )}
-
-          {/* Stats */}
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-            <span className="text-xs text-slate-400">{offer.category}</span>
-            <span className="text-xs text-slate-400 flex items-center gap-1">
-              👁 {offer.clicks}
-            </span>
           </div>
         </div>
       </div>
@@ -111,41 +79,12 @@ export default function OfferCard({ offer, compact }: { offer: OfferData; compac
   )
 }
 
-/**
- * Badge da loja com cores oficiais:
- * 🟡 Mercado Livre = amarelo #FFE600
- * 🔵 Magalu = azul #0086FF
- * 🔴 Shopee = laranja/vermelho (adormecida)
- * 🟠 Amazon = laranja (adormecida)
- */
-function StoreBadge({ store }: { store: string }) {
-  const colors: Record<string, string> = {
+function storeBadge(store: string): string {
+  const map: Record<string, string> = {
     mercadolivre: 'bg-[#FFE600] text-slate-900',
-    magalu:        'bg-[#0086FF] text-white',
-    shopee:        'bg-[#EE4D2D] text-white',
-    amazon:        'bg-[#FF9900] text-slate-900',
-    tiktok:        'bg-black text-white',
+    magalu: 'bg-[#0086FF] text-white',
+    shopee: 'bg-[#EE4D2D] text-white',
+    amazon: 'bg-[#FF9900] text-slate-900',
   }
-
-  const labels: Record<string, string> = {
-    mercadolivre: 'Mercado Livre',
-    magalu:        'Magalu',
-    shopee:        'Shopee',
-    amazon:        'Amazon',
-    tiktok:        'TikTok Shop',
-  }
-
-  return (
-    <span className={`absolute top-3 right-3 text-[10px] font-bold px-2 py-0.5 rounded-full ${colors[store] || 'bg-slate-200 text-slate-700'} shadow`}>
-      {labels[store] || store}
-    </span>
-  )
-}
-
-function FlashTimer({ endAt }: { endAt: Date | string }) {
-  return (
-    <span className="flash-timer text-xs">
-      ⚡ TERMINA EM BREVE
-    </span>
-  )
+  return map[store] || 'bg-slate-200 text-slate-700'
 }

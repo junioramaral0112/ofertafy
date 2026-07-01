@@ -96,7 +96,7 @@ export default function OfferSection({
         </div>
       ) : (
         /* grid — padrão */
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
           {offers.slice(0, 15).map((offer) => (
             <OfferCard key={offer.id} offer={offer} />
           ))}
