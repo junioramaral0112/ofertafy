@@ -98,9 +98,20 @@ export default function RootLayout({
               url: SITE_URL,
               description: SITE_DESCRIPTION,
               sameAs: ['https://www.instagram.com/ofertafy', 'https://www.tiktok.com/@ofertafy'],
+              potentialAction: {
+                '@type': 'SearchAction',
+                target: {
+                  '@type': 'EntryPoint',
+                  urlTemplate: `${SITE_URL}/busca?q={search_term_string}`,
+                },
+                'query-input': 'required name=search_term_string',
+              },
             }),
           }}
         />
+        {/* Font preconnect */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Preconnect para domínios externos */}
         <link rel="preconnect" href="https://http2.mlstatic.com" />
         <link rel="preconnect" href="https://cf.shopee.com.br" />

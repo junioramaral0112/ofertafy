@@ -46,6 +46,8 @@ export default function Footer() {
               <li><Link href="/sobre-nos" className="text-sm text-slate-400 hover:text-white transition-colors">Sobre nós</Link></li>
               <li><Link href="/contato" className="text-sm text-slate-400 hover:text-white transition-colors">Contato</Link></li>
               <li><Link href="/cupons" className="text-sm text-slate-400 hover:text-white transition-colors">Cupons</Link></li>
+              <li><Link href="/termos-de-uso" className="text-sm text-slate-400 hover:text-white transition-colors">Termos de Uso</Link></li>
+              <li><Link href="/politica-de-privacidade" className="text-sm text-slate-400 hover:text-white transition-colors">Privacidade</Link></li>
             </ul>
             <div className="mt-6 bg-slate-800 rounded-lg p-3 text-xs text-slate-400">
               ⚠️ Somos um site afiliado. Podemos receber comissão por compras realizadas através dos nossos links. Mercado Livre (matt_tool), Magalu (Magazine Você) e Amazon (tag ofertafy00-20).

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { formatPrice } from '@/lib/utils'
 import type { OfferData } from '@/types'
 
-export default function OfferCard({ offer }: { offer: OfferData }) {
+export default function OfferCard({ offer, compact }: { offer: OfferData; compact?: boolean }) {
   return (
     <Link
       href={`/produto/${offer.id}`}
@@ -66,8 +66,17 @@ export default function OfferCard({ offer }: { offer: OfferData }) {
             <p className="text-xs text-slate-500 mt-1">{offer.installment}</p>
           )}
 
+          {/* IA Score placeholder — Sprint 3 */}
+          {!compact && (
+            <div className="mt-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-1 text-[10px] text-slate-300 italic">
+                <span>🤖</span> Nota IA em breve
+              </div>
+            </div>
+          )}
+
           {/* Stats */}
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
             <span className="text-xs text-slate-400">{offer.category}</span>
             <span className="text-xs text-slate-400 flex items-center gap-1">
               👁 {offer.clicks}

@@ -13,6 +13,7 @@
     "db:studio": "prisma studio",
     "fetch": "tsx src/scripts/fetch-offers.ts",
     "audit": "tsx scripts/auditar-links.ts",
+    "clean-dead-links": "tsx scripts/limpar-links-mortos.ts",
     "postinstall": "prisma generate && npx puppeteer browsers install chrome || true",
     "deploy:setup": "npm install && prisma generate && prisma db push && npm run build",
     "deploy:start": "pm2 start ecosystem.config.cjs",
