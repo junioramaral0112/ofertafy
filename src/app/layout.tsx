@@ -97,7 +97,7 @@ export default function RootLayout({
               name: 'Ofertafy',
               url: SITE_URL,
               description: SITE_DESCRIPTION,
-              sameAs: ['https://www.instagram.com/ofertafy', 'https://www.tiktok.com/@ofertafy'],
+              sameAs: ['https://www.instagram.com/ofertafy.br', 'https://www.tiktok.com/@ofertafy'],
               potentialAction: {
                 '@type': 'SearchAction',
                 target: {

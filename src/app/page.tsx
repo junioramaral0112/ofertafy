@@ -147,7 +147,7 @@ function RightSidebar({ mostClicked }: { mostClicked: any[] }) {
         <p className="text-2xl mb-1">📸</p>
         <p className="font-bold text-sm mb-1">Siga no Instagram</p>
         <p className="text-xs text-white/70 mb-3">Ofertas diárias nos stories</p>
-        <a href="https://www.instagram.com/ofertafy" target="_blank" rel="noopener noreferrer"
+        <a href="https://www.instagram.com/ofertafy.br" target="_blank" rel="noopener noreferrer"
           className="inline-block bg-white text-purple-600 font-bold text-xs px-4 py-2 rounded-lg hover:bg-purple-50 transition-colors">
           Seguir →
         </a>
