@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { getOfferById } from '@/lib/fetcher'
 import PriceChart from '@/components/PriceChart'
+import AIAnalysis from '@/components/AIAnalysis'
 import OfferCard from '@/components/OfferCard'
 import Breadcrumbs from '@/components/Breadcrumbs'
 import { formatPrice, getBridgeUrl } from '@/lib/utils'
@@ -155,6 +156,11 @@ export default async function ProdutoPage({ params }: Props) {
 
         <div className="bg-white rounded-2xl border border-slate-200 p-4 md:p-6 mb-10">
           <PriceChart history={offer.priceHistory || []} currentPrice={offer.price} />
+        </div>
+
+        {/* 🤖 Análise da IA */}
+        <div className="mb-10">
+          <AIAnalysis offer={offer} priceHistory={offer.priceHistory} />
         </div>
 
         {similar.length > 0 && (

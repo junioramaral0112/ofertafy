@@ -1,8 +1,11 @@
 import Link from 'next/link'
 import { formatPrice } from '@/lib/utils'
+import { calculateIndiceOfertafy } from '@/lib/ia'
 import type { OfferData } from '@/types'
 
 export default function OfferCard({ offer, compact }: { offer: OfferData; compact?: boolean }) {
+  const indice = calculateIndiceOfertafy(offer)
+  const scoreColor = indice.score >= 80 ? 'text-green-600' : indice.score >= 60 ? 'text-emerald-600' : indice.score >= 35 ? 'text-amber-600' : 'text-red-500'
   return (
     <Link
       href={`/produto/${offer.id}`}
@@ -66,11 +69,23 @@ export default function OfferCard({ offer, compact }: { offer: OfferData; compac
             <p className="text-xs text-slate-500 mt-1">{offer.installment}</p>
           )}
 
-          {/* IA Score placeholder — Sprint 3 */}
+          {/* Índice Ofertafy */}
           {!compact && (
             <div className="mt-2 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-1 text-[10px] text-slate-300 italic">
-                <span>🤖</span> Nota IA em breve
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px]">🤖</span>
+                <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      indice.score >= 80 ? 'bg-green-500'
+                      : indice.score >= 60 ? 'bg-emerald-500'
+                      : indice.score >= 35 ? 'bg-amber-500'
+                      : 'bg-red-400'
+                    }`}
+                    style={{ width: `${indice.score}%` }}
+                  />
+                </div>
+                <span className={`text-xs font-bold ${scoreColor}`}>{indice.score}</span>
               </div>
             </div>
           )}

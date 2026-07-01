@@ -1,5 +1,22 @@
 # Changelog — Ofertafy
 
+## [v2.3.0] — 2026-07-01 — Sprint 3 (IA e Confiança)
+
+### Adicionado
+- **Índice Ofertafy**: algoritmo proprietário de 0-100 baseado em 6 fatores (desconto, popularidade, tendência, preço vs média, loja, frete)
+- **Detector de Falso Desconto**: 3 heurísticas para identificar preços inflados artificialmente
+- **Análise de Preço**: menor, maior, média, tendência, dias rastreados
+- **AIAnalysis**: bloco visual completo na página de produto (score circular, fatores, recomendação)
+- Score real no OfferCard (barra colorida + número)
+- Score real no HeroCarousel
+
+### Alterado
+- OfferCard: placeholder IA → Índice Ofertafy funcional
+- HeroCarousel: placeholder IA → Índice Ofertafy funcional
+- Página de produto: +AIAnalysis entre gráfico e similares
+
+---
+
 ## [v2.2.0] — 2026-07-01 — Sprint 2 (Home e UX)
 
 ### Adicionado

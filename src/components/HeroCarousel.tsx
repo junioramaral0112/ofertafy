@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { OfferData } from '@/types'
 import { formatPrice, getBridgeUrl } from '@/lib/utils'
+import { calculateIndiceOfertafy } from '@/lib/ia'
 
 interface HeroCarouselProps {
   offers: OfferData[]
@@ -38,6 +39,7 @@ export default function HeroCarousel({ offers }: HeroCarouselProps) {
   if (slides.length === 0) return null
 
   const offer = slides[current]
+  const indice = calculateIndiceOfertafy(offer)
 
   return (
     <section className="relative bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-hidden">
@@ -138,11 +140,18 @@ export default function HeroCarousel({ offers }: HeroCarouselProps) {
               )}
             </div>
 
-            {/* Espaço reservado para Nota IA (Sprint 3) */}
+            {/* Índice Ofertafy */}
             <div className="bg-white/5 border border-white/10 rounded-xl p-3 mb-5">
-              <p className="text-xs text-white/40 italic">
-                🤖 Nota da IA disponível em breve
-              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🤖</span>
+                <span className="text-white/60 text-xs">Índice Ofertafy</span>
+                <span className={`ml-auto text-xl font-extrabold ${
+                  indice.score >= 80 ? 'text-green-400'
+                  : indice.score >= 60 ? 'text-emerald-400'
+                  : indice.score >= 35 ? 'text-amber-400'
+                  : 'text-red-400'
+                }`}>{indice.score}</span>
+              </div>
             </div>
 
             {/* CTA */}
