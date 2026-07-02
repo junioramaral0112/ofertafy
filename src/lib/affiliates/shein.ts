@@ -43,8 +43,6 @@ const SEARCH_TERMS = [
   'maquiagem',
 ]
 
-const AFFILIATE_PARAM = 'url_from=affiliate_koc_4292353225'
-
 export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer[]> {
   console.log('👗 SHEIN: iniciando busca...')
   const all: RawOffer[] = []
@@ -150,14 +148,9 @@ async function buildSheinOffer(product: any, keyword: string): Promise<RawOffer 
 
     if (finalPrice <= 0) return null
 
-    // URL — preserva a original, sem injetar parâmetro manualmente
-    let productUrl = product.url || `https://www.shein.com.br/product-p-${productId}.html`
-
-    // Só adiciona tracking se não for OneLink
-    if (!productUrl.includes('onelink') && !productUrl.includes('url_from=')) {
-      const sep = productUrl.includes('?') ? '&' : '?'
-      productUrl = `${productUrl}${sep}${AFFILIATE_PARAM}`
-    }
+    // URL limpa do produto — SEM parâmetros de tracking
+    // O tracking é aplicado separadamente pelo generateAffiliateUrl
+    const productUrl = product.url || `https://www.shein.com.br/product-p-${productId}.html`
 
     const imageUrl = product.image
       ? product.image.startsWith('http') ? product.image : `https://img.shein.com/${product.image}`

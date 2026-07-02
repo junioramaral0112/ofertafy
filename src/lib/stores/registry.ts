@@ -111,9 +111,10 @@ export const STORE_REGISTRY: Record<string, StoreConfig> = {
     active: true,
     reputation: 62,
     affiliate: {
-      type: 'query_param',
-      paramName: 'url_from',
-      paramValue: 'affiliate_koc_4292353225',
+      type: 'shortlink',
+      // SHEIN tracking via OneLink — a URL do produto permanece limpa.
+      // O afiliado é rastreado via cookie de origem (tráfego do Ofertafy).
+      // Quando OneLink estiver disponível, usar customUrlBuilder.
     },
   },
 }
