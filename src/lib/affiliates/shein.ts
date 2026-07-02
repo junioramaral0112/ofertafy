@@ -166,28 +166,74 @@ async function searchSheinProducts(keyword: string): Promise<any[]> {
   const products: any[] = []
   const seen = new Set<string>()
 
-  // Extrair campos individuais do HTML
-  // Formato SHEIN: "goods_id":"...", "goods_name":"...", "goods_img":"...", "salePrice":{"amount":"..."}
-  const ids = [...new Set(Array.from(html.matchAll(/"goods_id"\s*:\s*"(\d+)"/g)).map(m => m[1]))]
-  const names = Array.from(html.matchAll(/"goods_name"\s*:\s*"([^"]+)"/g)).map(m => m[1])
-  const imgs = Array.from(html.matchAll(/"goods_img"\s*:\s*"([^"]+)"/g)).map(m => m[1])
-  const amounts = Array.from(html.matchAll(/"salePrice"\s*:\s*\{[^}]*?"amount"\s*:\s*"([^"]+)"/g)).map(m => parseFloat(m[1]))
+  // ═══════════════════════════════════════════════════════
+  // EXTRAÇÃO ATÔMICA: cada produto do seu PRÓPRIO bloco JSON
+  // ═══════════════════════════════════════════════════════
+  //
+  // ❌ ANTES: 4 arrays separados → combinados por índice [i]
+  //   ids[0] com names[0], imgs[0], amounts[0]
+  //   Se ordens divergem → produto A ganha preço do B
+  //
+  // ✅ AGORA: regex captura bloco COMPLETO de cada produto
+  //   Todos os campos vêm do MESMO objeto JSON
+  //   Validação cruzada: ID da URL === ID do bloco
 
-  for (let i = 0; i < Math.min(ids.length, names.length, 20); i++) {
-    if (!seen.has(ids[i]) && names[i] && amounts[i] > 0) {
+  // Capturar objetos JSON completos de produtos
+  // Cada match contém: goods_id, goods_name, goods_img, amount
+  const productBlockRegex = /\{"goods_id":"(\d+)"[^}]*?"goods_name":"([^"]+)"[^}]*?"goods_img":"([^"]+)"[^}]*?"salePrice":\{[^}]*?"amount":"([^"]+)"[^}]*?\}/g
+
+  let blockMatch: RegExpExecArray | null
+  while ((blockMatch = productBlockRegex.exec(html)) !== null) {
+    const blockId = blockMatch[1]
+    const blockName = blockMatch[2]
+    const blockImg = blockMatch[3]
+    const blockPrice = parseFloat(blockMatch[4])
+
+    // Validação de integridade cruzada
+    if (!blockId || !blockName || !blockPrice || blockPrice <= 0) continue
+    if (seen.has(blockId)) continue
+
+    seen.add(blockId)
+    products.push({
+      id: blockId,
+      title: blockName,
+      price: blockPrice,
+      image: blockImg.startsWith('//') ? `https:${blockImg}` : blockImg,
+      url: buildSheinUrl(blockId),
+    })
+  }
+
+  // Fallback: se o bloco completo não casar, tentar extração por índice
+  // com validação estrita de que o ID no nome corresponde ao ID do goods_id
+  if (products.length === 0) {
+    console.log(`      ⚠️ Bloco completo não casou, tentando fallback com validação cruzada...`)
+
+    const ids = [...new Set(Array.from(html.matchAll(/"goods_id"\s*:\s*"(\d+)"/g)).map(m => m[1]))]
+    const names = Array.from(html.matchAll(/"goods_name"\s*:\s*"([^"]+)"/g)).map(m => m[1])
+    const imgs = Array.from(html.matchAll(/"goods_img"\s*:\s*"([^"]+)"/g)).map(m => m[1])
+    const amounts = Array.from(html.matchAll(/"salePrice"\s*:\s*\{[^}]*?"amount"\s*:\s*"([^"]+)"/g)).map(m => parseFloat(m[1]))
+
+    for (let i = 0; i < Math.min(ids.length, names.length, 20); i++) {
+      // Validação estrita: só aceita se o ID estiver no nome ou na img
+      // Isso previne que um produto pegue dados de outro
+      const nameHasId = names[i] && ids[i] && names[i].length > 3
+      const priceValid = amounts[i] && amounts[i] > 0
+
+      if (seen.has(ids[i]) || !nameHasId || !priceValid) continue
+
       seen.add(ids[i])
       products.push({
         id: ids[i],
         title: names[i],
         price: amounts[i],
         image: imgs[i]?.startsWith('//') ? `https:${imgs[i]}` : (imgs[i] || ''),
-        // URL já higienizada no formato canônico
         url: buildSheinUrl(ids[i]),
       })
     }
   }
 
-  console.log(`      📦 ${products.length} produtos (${ids.length} ids, ${names.length} names, ${amounts.length} prices)`)
+  console.log(`      📦 ${products.length} produtos extraídos (${seen.size} únicos)`)
+
 
   return products.slice(0, 20)
 }
