@@ -148,8 +148,7 @@ async function buildSheinOffer(product: any, keyword: string): Promise<RawOffer 
 
     if (finalPrice <= 0) return null
 
-    // URL limpa do produto — SEM parâmetros de tracking
-    // O tracking é aplicado separadamente pelo generateAffiliateUrl
+    // URL limpa do produto
     const productUrl = product.url || `https://www.shein.com.br/product-p-${productId}.html`
 
     const imageUrl = product.image
