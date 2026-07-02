@@ -1,16 +1,17 @@
 import Link from 'next/link'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, generateProductSlug } from '@/lib/utils'
 import { calculateIndiceOfertafy, isVerifiedOffer } from '@/lib/ia'
 import type { OfferData } from '@/types'
 
 export default function OfferCard({ offer, compact }: { offer: OfferData; compact?: boolean }) {
   const indice = calculateIndiceOfertafy(offer)
   const verified = isVerifiedOffer(offer)
+  const slug = generateProductSlug(offer.title, offer.id)
   const scoreColor = indice.score >= 80 ? 'bg-green-500' : indice.score >= 60 ? 'bg-emerald-500' : indice.score >= 35 ? 'bg-amber-500' : 'bg-red-500'
 
   return (
     <Link
-      href={`/produto/${offer.id}`}
+      href={`/p/${slug}`}
       className="bg-white rounded-xl border border-slate-100 overflow-hidden flex flex-col group hover:shadow-md hover:border-slate-200 transition-all duration-200"
     >
       {/* Imagem com badges sobrepostos */}

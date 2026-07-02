@@ -72,6 +72,52 @@ export function getBridgeUrl(
   return absolute ? `${getBaseUrl()}${path}` : path
 }
 
+// ═══════════════════════════════════════════════════════════
+// SLUGS SEO
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Gera um slug SEO-friendly a partir de um título.
+ * Ex: "iPhone 15 Pro Max 256GB" → "iphone-15-pro-max-256gb"
+ */
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 120)
+}
+
+/**
+ * Gera o slug completo para um produto: slug-do-titulo--idCurto
+ * Ex: "iPhone 15 Pro Max 256GB", "cm123abc456def" → "iphone-15-pro-max-256gb--abc456def"
+ */
+export function generateProductSlug(title: string, id: string): string {
+  const titleSlug = slugify(title)
+  const idShort = id.slice(-8)
+  return `${titleSlug}--${idShort}`
+}
+
+/**
+ * Extrai o ID curto de um slug de produto.
+ * Ex: "iphone-15-pro-max-256gb--abc456def" → "abc456def"
+ * Retorna null se o formato for inválido.
+ */
+export function extractIdFromSlug(slug: string): string | null {
+  const match = slug.match(/--([a-z0-9]{8,})$/i)
+  return match ? match[1] : null
+}
+
+/**
+ * Converte um ID curto (8 chars) em busca para ID completo.
+ * Procura no banco pelo ID que termina com o ID curto.
+ */
+export function matchShortId(shortId: string, allIds: string[]): string | null {
+  return allIds.find((id) => id.endsWith(shortId)) || null
+}
+
 export function formatPrice(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -116,15 +162,6 @@ export function sanitizePrice(priceStr: string | null | undefined): number {
 export function calculateDiscount(original: number, current: number): number {
   if (original <= 0) return 0
   return Math.round(((original - current) / original) * 100)
-}
-
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
 }
 
 /**
