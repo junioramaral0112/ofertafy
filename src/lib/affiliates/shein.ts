@@ -77,13 +77,17 @@ export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer
 async function searchSheinProducts(keyword: string): Promise<any[]> {
   const url = `https://www.shein.com.br/pdsearch/${encodeURIComponent(keyword)}/?page=1&sort=7`
 
+  console.log(`      🔍 Buscando: ${keyword}`)
+
   const res = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Accept': 'text/html,application/json',
-      'Accept-Language': 'pt-BR,pt;q=0.9',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+      'Cache-Control': 'no-cache',
     },
-    signal: AbortSignal.timeout(15000),
+    redirect: 'follow',
+    signal: AbortSignal.timeout(20000),
   })
 
   if (!res.ok) {
@@ -92,53 +96,31 @@ async function searchSheinProducts(keyword: string): Promise<any[]> {
   }
 
   const html = await res.text()
-
-  // Extrai dados do JSON-LD ou scripts inline da SHEIN
   const products: any[] = []
+  const seen = new Set<string>()
 
-  // Tenta extrair do JSON inicial da página
-  const jsonMatch = html.match(/<script[^>]*>\s*window\.__INITIAL_STATE__\s*=\s*({[\s\S]*?})\s*<\/script>/)
-  if (jsonMatch) {
-    try {
-      const data = JSON.parse(jsonMatch[1])
-      const items = data?.searchResult?.productList || data?.products || []
-      for (const item of items) {
-        products.push({
-          id: item.goods_id || item.skuId || item.id,
-          title: item.goods_title || item.productName || item.title,
-          price: item.salePrice || item.retailPrice,
-          originalPrice: item.originalPrice || item.marketPrice,
-          image: item.image || item.goods_img || item.thumbnail,
-          url: `https://www.shein.com.br/${item.url_name || item.goods_id}-p-${item.goods_id}.html`,
-        })
-      }
-    } catch { /* JSON inválido, tenta fallback */ }
-  }
+  // Extrair campos individuais do HTML
+  // Formato SHEIN: "goods_id":"...", "goods_name":"...", "goods_img":"...", "salePrice":{"amount":"..."}
+  const ids = [...new Set(Array.from(html.matchAll(/"goods_id"\s*:\s*"(\d+)"/g)).map(m => m[1]))]
+  const names = Array.from(html.matchAll(/"goods_name"\s*:\s*"([^"]+)"/g)).map(m => m[1])
+  const imgs = Array.from(html.matchAll(/"goods_img"\s*:\s*"([^"]+)"/g)).map(m => m[1])
+  const amounts = Array.from(html.matchAll(/"salePrice"\s*:\s*\{[^}]*?"amount"\s*:\s*"([^"]+)"/g)).map(m => parseFloat(m[1]))
 
-  // Fallback: extrai cards de produto via regex
-  if (products.length === 0) {
-    const cardRegex = /"goods_id"\s*:\s*"(\d+)"[\s\S]*?"goods_title"\s*:\s*"([^"]+)"[\s\S]*?"salePrice"[\s\S]*?(\d+[.\d]*)/g
-    let match: RegExpExecArray | null
-    while ((match = cardRegex.exec(html)) !== null) {
-      const m = match
+  for (let i = 0; i < Math.min(ids.length, names.length, 20); i++) {
+    if (!seen.has(ids[i]) && names[i] && amounts[i] > 0) {
+      seen.add(ids[i])
       products.push({
-        id: m[1],
-        title: m[2],
-        price: parseFloat(m[3]) || 0,
+        id: ids[i],
+        title: names[i],
+        price: amounts[i],
+        image: imgs[i]?.startsWith('//') ? `https:${imgs[i]}` : (imgs[i] || ''),
+        url: `https://www.shein.com.br/product-p-${ids[i]}.html`,
       })
     }
   }
 
-  // Fallback 2: links de produto
-  if (products.length === 0) {
-    const linkRegex = /href="(\/product-[^"]+-p-(\d+)\.html)"/g
-    let match: RegExpExecArray | null
-    while ((match = linkRegex.exec(html)) !== null) {
-      if (match[2] && !products.find((p) => p.id === match[2])) {
-        products.push({ id: match[2]!, url: `https://www.shein.com.br${match[1]}` })
-      }
-    }
-  }
+  console.log(`      📦 ${products.length} produtos (${ids.length} ids, ${names.length} names, ${amounts.length} prices)`)
+
 
   return products.slice(0, 20)
 }
