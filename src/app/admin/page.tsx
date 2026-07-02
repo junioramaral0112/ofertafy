@@ -29,7 +29,9 @@ const STORE_OPTIONS = [
   { value: 'mercadolivre', label: 'Mercado Livre' },
   { value: 'magalu', label: 'Magalu' },
   { value: 'shopee', label: 'Shopee (adormecida)' },
-  { value: 'amazon', label: 'Amazon (adormecida)' },
+  { value: 'amazon', label: 'Amazon' },
+  { value: 'shein', label: 'SHEIN' },
+  { value: 'tiktok', label: 'TikTok Shop' },
 ]
 
 const CATEGORY_OPTIONS = [
@@ -438,6 +440,7 @@ const STORE_THEME: Record<string, { bg: string; text: string; badge: string; log
   shopee:        { bg: '#EE4D2D', text: '#fff', badge: 'bg-[#EE4D2D] text-white',   logo: 'Shopee' },
   amazon:        { bg: '#FF9900', text: '#111', badge: 'bg-[#FF9900] text-slate-900', logo: 'Amazon' },
   tiktok:        { bg: '#000000', text: '#fff', badge: 'bg-black text-white',       logo: 'TikTok Shop' },
+  shein:         { bg: '#000000', text: '#fff', badge: 'bg-black text-white',       logo: 'SHEIN' },
 }
 
 // ── Componente Marketing Modal ──────────────────────────

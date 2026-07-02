@@ -27,6 +27,7 @@ import { formatPrice, getBridgeUrl } from '@/lib/utils'
 const STORE_GROUPS: string[][] = [
   ['mercadolivre', 'magalu'],      // Grupo A: marketplaces Brasil
   ['shopee', 'amazon'],            // Grupo B: marketplaces globais
+  ['shein'],                       // Grupo C: moda
 ]
 
 /** Emojis por loja para deixar a mensagem visual */
@@ -35,6 +36,7 @@ const STORE_EMOJI: Record<string, string> = {
   magalu: '🔵',
   shopee: '🔴',
   amazon: '🟠',
+  shein: '👗',
 }
 
 const STORE_LABELS: Record<string, string> = {
@@ -42,6 +44,7 @@ const STORE_LABELS: Record<string, string> = {
   magalu: 'Magalu',
   shopee: 'Shopee',
   amazon: 'Amazon',
+  shein: 'SHEIN',
 }
 
 // ---------------------------------------------------------------------------

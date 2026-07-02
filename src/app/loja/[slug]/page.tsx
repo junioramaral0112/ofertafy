@@ -1,10 +1,20 @@
 import { getOffersByStore } from '@/lib/fetcher'
 import OfferGrid from '@/components/OfferGrid'
 import { STORES } from '@/lib/utils'
+import { getStore } from '@/lib/stores/registry'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string }> }
+
+function storeBg(slug: string): string {
+  const map: Record<string, string> = {
+    mercadolivre: 'bg-[#FFF9C4]', magalu: 'bg-[#DBEAFE]',
+    amazon: 'bg-[#FFF3E0]', shopee: 'bg-[#FFE0D9]',
+    tiktok: 'bg-slate-200', shein: 'bg-slate-100',
+  }
+  return map[slug] || 'bg-slate-100'
+}
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
@@ -36,8 +46,8 @@ export default async function LojaPage({ params, searchParams }: Props) {
       </div>
 
       {/* Store Header */}
-      <div className={`rounded-2xl p-6 md:p-10 mb-8 text-center ${slug === 'mercadolivre' ? 'bg-[#FFF9C4]' : slug === 'shopee' ? 'bg-[#FFE0D9]' : 'bg-[#FFF3E0]'}`}>
-        <span className="text-4xl block mb-3">{slug === 'mercadolivre' ? '🟡' : slug === 'shopee' ? '🔴' : '🟠'}</span>
+      <div className={`rounded-2xl p-6 md:p-10 mb-8 text-center ${storeBg(slug)}`}>
+        <span className="text-4xl block mb-3">{getStore(slug)?.icon || '🏪'}</span>
         <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-2">Ofertas na {store.name}</h1>
         <p className="text-slate-600">{data.total} ofertas encontradas • Links de afiliado</p>
       </div>

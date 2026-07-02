@@ -17,6 +17,7 @@ const STORE_STYLES: Record<string, { bg: string; text: string; border: string; l
   amazon:        { bg: 'bg-amber-50',   text: 'text-amber-700',   border: 'border-amber-200',   label: 'Amazon' },
   mercadolivre:  { bg: 'bg-yellow-50',  text: 'text-yellow-700',  border: 'border-yellow-200',  label: 'Mercado Livre' },
   magalu:        { bg: 'bg-blue-50',    text: 'text-blue-700',    border: 'border-blue-200',    label: 'Magalu' },
+  shein:         { bg: 'bg-slate-50',  text: 'text-slate-700',  border: 'border-slate-200',  label: 'SHEIN' },
 }
 
 const STORE_LOGOS: Record<string, string> = {
@@ -24,6 +25,7 @@ const STORE_LOGOS: Record<string, string> = {
   amazon:        '🟠',
   mercadolivre:  '🟡',
   magalu:        '🔵',
+  shein:         '👗',
 }
 
 export default function CouponCard({ coupon }: { coupon: Coupon }) {
