@@ -66,18 +66,29 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // ── Construir URL com tracking ─────────────────────
-    // O url_from só funciona em HTTP redirect (server-side).
-    // Em navegação client-side o app da SHEIN remove o parâmetro.
-    const trackingParam = `url_from=affiliate_koc_4292353225`
+    // ── Parâmetros de afiliado ─────────────────────────
+    // url_from: ID do afiliado na plataforma SHEIN
+    // subid: identificador da origem do clique (para analytics)
+    const AFFILIATE_ID = 'affiliate_koc_4292353225'
+    const SUBID = 'ofertafy_home'
+
+    // ── Montar URL limpa + tracking ────────────────────
+    // A URL limpa garante que o produto abra corretamente.
+    // Os parâmetros são processados pelo servidor da SHEIN
+    // durante o HTTP redirect, ANTES de qualquer App abrir.
     const productUrl = `https://br.shein.com/product-p-${productId}.html`
-    const targetUrl = `${productUrl}?${trackingParam}`
+    const targetUrl = `${productUrl}?url_from=${AFFILIATE_ID}&subid=${SUBID}`
 
     // ── HTTP 302 Redirect ──────────────────────────────
     // 302 = redirecionamento temporário.
-    // O navegador segue o redirect na camada HTTP.
-    // Apps NÃO interceptam redirecionamentos HTTP.
-    return NextResponse.redirect(targetUrl, 302)
+    // Cache-Control: no-store impede que o navegador faça cache
+    // do redirect, garantindo que cada clique seja rastreado.
+    return NextResponse.redirect(targetUrl, {
+      status: 302,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    })
 
   } catch {
     // Fallback: redirecionar para o produto sem tracking
