@@ -20,6 +20,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/sobre-nos`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${baseUrl}/contato`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${baseUrl}/login`, lastModified: now, changeFrequency: 'monthly', priority: 0.1 },
+    // Moda — SEO pages
+    { url: `${baseUrl}/moda/moda-feminina`, lastModified: now, changeFrequency: 'hourly', priority: 0.9 },
+    { url: `${baseUrl}/moda/moda-masculina`, lastModified: now, changeFrequency: 'hourly', priority: 0.9 },
+    { url: `${baseUrl}/moda/vestidos`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
+    { url: `${baseUrl}/moda/calcados`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
+    { url: `${baseUrl}/moda/bolsas`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
+    { url: `${baseUrl}/moda/tenis-feminino`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
+    { url: `${baseUrl}/moda/tenis-masculino`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
   ]
 
   // ── Categorias ───────────────────────────────────

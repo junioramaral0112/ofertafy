@@ -381,10 +381,45 @@ const CATEGORY_RULES: CategoryRule[] = [
     keywords: ['furadeira', 'parafusadeira', 'lixadeira', 'serra', 'martelo', 'chave', 'alicate', 'trena', 'nível', 'solda', 'esmerilhadeira', 'compressor', 'kit ferramentas'],
     requireMatch: true,
   },
+  // ── Moda Feminina ──────────────────────────
+  {
+    name: 'Moda Feminina',
+    slug: 'moda-feminina',
+    keywords: ['vestido', 'blusa feminina', 'saia', 'conjunto feminino', 'body', 'cropped', 'macacão feminino', 'calça feminina', 'legging', 'short feminino', 'biquíni', 'maiô', 'moda praia', 'camisola', 'lingerie', 'sutiã', 'calcinha', 'plus size', 'maternity', 'gestante'],
+    requireMatch: true,
+  },
+  // ── Moda Masculina ─────────────────────────
+  {
+    name: 'Moda Masculina',
+    slug: 'moda-masculina',
+    keywords: ['camisa masculina', 'camiseta masculina', 'calça masculina', 'bermuda masculina', 'cueca box', 'terno', 'gravata', 'polo masculina', 'regata masculina', 'moletom masculino', 'jaqueta masculina', 'short masculino', 'calção masculino', 'social masculina', 'camisa social'],
+    requireMatch: true,
+  },
+  // ── Calçados ───────────────────────────────
+  {
+    name: 'Calçados',
+    slug: 'calcados',
+    keywords: ['tênis', 'sapatênis', 'sandália', 'chinelo', 'bota', 'sapato', 'mocassim', 'sapatilha', 'rasteirinha', 'scarpin', 'coturno', 'alpargata', 'pantufa', 'chuteira', 'tamanco', 'salto', 'flatform'],
+    requireMatch: true,
+  },
+  // ── Bolsas ─────────────────────────────────
+  {
+    name: 'Bolsas',
+    slug: 'bolsas',
+    keywords: ['bolsa', 'mochila', 'carteira', 'necessaire', 'pochete', 'bolsa tiracolo', 'mala de viagem', 'bagagem', 'clutch', 'ecobag', 'sacola', 'estojo', 'bolsa térmica', 'mochila escolar', 'bolsa feminina', 'bolsa masculina'],
+    requireMatch: true,
+  },
+  // ── Infantil ───────────────────────────────
+  {
+    name: 'Infantil',
+    slug: 'infantil',
+    keywords: ['infantil', 'bebê', 'criança', 'menina', 'menino', 'fralda', 'mamadeira', 'carrinho', 'brinquedo', 'boneca', 'carrinho controle', 'lego', 'playmobil', 'pelúcia', 'jogo educativo', 'neném', 'recém nascido'],
+    requireMatch: true,
+  },
   {
     name: 'Moda',
     slug: 'moda',
-    keywords: ['tênis', 'camiseta', 'camisa', 'calça', 'bermuda', 'moletom', 'jaqueta', 'chinelo', 'sandália', 'bota', 'boné', 'meia', 'cueca', 'bolsa', 'mochila', 'cinto', 'relógio', 'óculos'],
+    keywords: ['camiseta', 'camisa', 'calça', 'bermuda', 'moletom', 'jaqueta', 'boné', 'meia', 'cinto', 'óculos', 'relógio'],
   },
   {
     name: 'Beleza',
@@ -523,14 +558,18 @@ export function formatInstallment(price: number, installments: number = 12): str
 }
 
 export const CATEGORIES = [
+  { name: 'Moda Feminina', slug: 'moda-feminina' },
+  { name: 'Moda Masculina', slug: 'moda-masculina' },
+  { name: 'Calçados', slug: 'calcados' },
+  { name: 'Bolsas', slug: 'bolsas' },
+  { name: 'Beleza', slug: 'beleza' },
+  { name: 'Casa', slug: 'casa' },
+  { name: 'Infantil', slug: 'infantil' },
   { name: 'Eletrônicos', slug: 'eletronicos' },
   { name: 'Celulares', slug: 'celulares' },
   { name: 'Informática', slug: 'informatica' },
-  { name: 'Moda', slug: 'moda' },
-  { name: 'Casa', slug: 'casa' },
   { name: 'Eletrodomésticos', slug: 'eletrodomesticos' },
   { name: 'Esportes', slug: 'esportes' },
-  { name: 'Beleza', slug: 'beleza' },
   { name: 'Brinquedos', slug: 'brinquedos' },
   { name: 'Pets', slug: 'pets' },
   { name: 'Livros', slug: 'livros' },
