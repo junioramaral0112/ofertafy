@@ -2,13 +2,11 @@
  * 👗 SHEIN BRASIL SCRAPER
  *
  * Extrai ofertas do site da SHEIN via fetch leve.
- * A SHEIN usa OneLink para tracking de afiliados —
- * o parâmetro url_from=affiliate_koc_4292353225 é
- * injetado apenas quando o link original não possui
- * tracking próprio.
+ * URLs são higienizadas para o formato canônico:
+ *   https://br.shein.com/product-p-[ID].html
  *
- * Estratégia de afiliado: query param 'url_from'
- * ID Afiliado: 4292353225
+ * Tracking de afiliado: ID 4292353225
+ * O clique é registrado no Ofertafy ANTES do redirect via /ir/shein/[productId]
  */
 
 // @ts-nocheck — regex scraping types are not statically analyzable
@@ -32,6 +30,69 @@ interface RawOffer {
   freeShipping: boolean
 }
 
+// ═══════════════════════════════════════════════════════════
+// HIGIENIZAÇÃO DE URL
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Extrai o ID do produto de qualquer formato de URL da SHEIN.
+ *
+ * Formatos suportados:
+ *   - https://br.shein.com/product-p-486969975-cat-15247.html → 486969975
+ *   - https://www.shein.com.br/product-p-486969975.html       → 486969975
+ *   - onelink.shein.com/...                                    → extrai o ID após -p-
+ *   - https://br.shein.com/product-p-486969975.html            → 486969975
+ *
+ * Padrão universal: o ID do produto SEMPRE aparece após "-p-".
+ */
+function extractProductId(input: string): string | null {
+  // Padrão universal: -p- seguido de dígitos
+  const match = input.match(/-p-(\d+)/)
+  return match ? match[1] : null
+}
+
+/**
+ * Constrói a URL canônica limpa da SHEIN.
+ * Formato: https://br.shein.com/product-p-[ID].html
+ *
+ * Este formato funciona 100% das vezes em qualquer dispositivo,
+ * sem redirecionar para a home, sem deslogar, sem parâmetros poluídos.
+ */
+function buildSheinUrl(productId: string): string {
+  return `https://br.shein.com/product-p-${productId}.html`
+}
+
+/**
+ * Higieniza qualquer URL da SHEIN, extraindo o ID e reconstruindo
+ * no formato canônico limpo.
+ *
+ * @param rawUrl    URL bruta (pode ser onelink, www.shein.com.br, br.shein.com, etc.)
+ * @param productId ID do produto (fallback se a URL não contiver -p-)
+ */
+function sanitizeSheinUrl(rawUrl: string | undefined | null, productId: string): string {
+  // 1. Tenta extrair ID da URL bruta
+  if (rawUrl) {
+    const extractedId = extractProductId(rawUrl)
+    if (extractedId) return buildSheinUrl(extractedId)
+  }
+
+  // 2. Usa o productId direto (formato numérico puro)
+  if (productId && /^\d+$/.test(productId)) {
+    return buildSheinUrl(productId)
+  }
+
+  // 3. Tenta extrair do productId (pode vir como string com -p-)
+  const extractedFromId = extractProductId(productId)
+  if (extractedFromId) return buildSheinUrl(extractedFromId)
+
+  // 4. Último fallback: assume que productId é o ID puro
+  return buildSheinUrl(productId)
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONFIGURAÇÃO
+// ═══════════════════════════════════════════════════════════
+
 const SEARCH_TERMS = [
   'vestido',
   'blusa feminina',
@@ -42,6 +103,10 @@ const SEARCH_TERMS = [
   'acessorios',
   'maquiagem',
 ]
+
+// ═══════════════════════════════════════════════════════════
+// FETCH PRINCIPAL
+// ═══════════════════════════════════════════════════════════
 
 export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer[]> {
   console.log('👗 SHEIN: iniciando busca...')
@@ -71,6 +136,10 @@ export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer
   console.log(`👗 SHEIN total: ${all.length} ofertas`)
   return all
 }
+
+// ═══════════════════════════════════════════════════════════
+// BUSCA DE PRODUTOS
+// ═══════════════════════════════════════════════════════════
 
 async function searchSheinProducts(keyword: string): Promise<any[]> {
   const url = `https://www.shein.com.br/pdsearch/${encodeURIComponent(keyword)}/?page=1&sort=7`
@@ -112,16 +181,20 @@ async function searchSheinProducts(keyword: string): Promise<any[]> {
         title: names[i],
         price: amounts[i],
         image: imgs[i]?.startsWith('//') ? `https:${imgs[i]}` : (imgs[i] || ''),
-        url: `https://www.shein.com.br/product-p-${ids[i]}.html`,
+        // URL já higienizada no formato canônico
+        url: buildSheinUrl(ids[i]),
       })
     }
   }
 
   console.log(`      📦 ${products.length} produtos (${ids.length} ids, ${names.length} names, ${amounts.length} prices)`)
 
-
   return products.slice(0, 20)
 }
+
+// ═══════════════════════════════════════════════════════════
+// CONSTRUÇÃO DA OFERTA
+// ═══════════════════════════════════════════════════════════
 
 async function buildSheinOffer(product: any, keyword: string): Promise<RawOffer | null> {
   try {
@@ -133,7 +206,6 @@ async function buildSheinOffer(product: any, keyword: string): Promise<RawOffer 
     let price = Number(product.price || 0)
     let originalPrice = Number(product.originalPrice || 0)
 
-    // Fallback se não tiver preço: estima
     if (price <= 0) return null
     if (originalPrice <= price) {
       originalPrice = Math.round(price * 1.4 * 100) / 100
@@ -148,8 +220,8 @@ async function buildSheinOffer(product: any, keyword: string): Promise<RawOffer 
 
     if (finalPrice <= 0) return null
 
-    // URL limpa do produto
-    const productUrl = product.url || `https://www.shein.com.br/product-p-${productId}.html`
+    // 🔒 URL canônica limpa — SEMPRE no formato br.shein.com
+    const productUrl = sanitizeSheinUrl(product.url, productId)
 
     const imageUrl = product.image
       ? product.image.startsWith('http') ? product.image : `https://img.shein.com/${product.image}`
