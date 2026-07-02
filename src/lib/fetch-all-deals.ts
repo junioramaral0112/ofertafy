@@ -15,6 +15,7 @@ import { fetchMercadoLivreDeals } from './affiliates/mercadolivre'
 import { fetchMagaluDeals } from './affiliates/magalu'
 import { fetchShopeeDeals } from './affiliates/shopee'
 import { fetchTikTokDeals } from './affiliates/tiktok'
+import { fetchSheinDeals } from './affiliates/shein'
 import type { FetchResult } from '@/types'
 
 function getAffiliateConfig() {
@@ -42,11 +43,12 @@ export async function fetchAllDeals(): Promise<FetchResult[]> {
   const results: FetchResult[] = []
 
   // Lojas principais (sem Puppeteer)
-  const [mlDeals, magaluDeals, shopeeDeals, tiktokDeals] = await Promise.all([
+  const [mlDeals, magaluDeals, shopeeDeals, tiktokDeals, sheinDeals] = await Promise.all([
     fetchMercadoLivreDeals(config).catch((e) => { console.error('ML:', e); return [] }),
     fetchMagaluDeals(config).catch((e) => { console.error('Magalu:', e); return [] }),
     fetchShopeeDeals(config).catch((e) => { console.error('Shopee:', e); return [] }),
     fetchTikTokDeals(config).catch((e) => { console.error('TikTok:', e); return [] }),
+    fetchSheinDeals(config).catch((e) => { console.error('SHEIN:', e); return [] }),
   ])
 
   // Amazon — import dinâmico ISOLADO (Puppeteer ~300 MB)
@@ -118,14 +120,15 @@ export async function fetchAllDeals(): Promise<FetchResult[]> {
     return { store: storeLabel, offersFound: deals.length, offersAdded: added, offersUpdated: updated, errors: errors.slice(0, 5) }
   }
 
-  const [mlResult, magaluResult, shopeeResult, tiktokResult] = await Promise.all([
+  const [mlResult, magaluResult, shopeeResult, tiktokResult, sheinResult] = await Promise.all([
     processStore(mlDeals, 'Mercado Livre'),
     processStore(magaluDeals, 'Magalu'),
     processStore(shopeeDeals, 'Shopee'),
     processStore(tiktokDeals, 'TikTok Shop'),
+    processStore(sheinDeals, 'SHEIN'),
   ])
 
-  results.push(mlResult, magaluResult, shopeeResult, tiktokResult)
+  results.push(mlResult, magaluResult, shopeeResult, tiktokResult, sheinResult)
 
   // Amazon — processa separadamente
   if (amazonDeals.length > 0) {

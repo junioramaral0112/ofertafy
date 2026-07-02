@@ -98,6 +98,24 @@ export const STORE_REGISTRY: Record<string, StoreConfig> = {
       paramValue: process.env.TIKTOK_AFFILIATE_ID || '',
     },
   },
+
+  // ─── SHEIN ────────────────────────────────────
+  shein: {
+    slug: 'shein',
+    name: 'SHEIN',
+    domain: 'shein.com.br',
+    color: '#000000',
+    textColor: '#ffffff',
+    icon: '👗',
+    badgeClass: 'bg-black text-white',
+    active: true,
+    reputation: 62,
+    affiliate: {
+      type: 'query_param',
+      paramName: 'url_from',
+      paramValue: 'affiliate_koc_4292353225',
+    },
+  },
 }
 
 /** Lista plana de lojas ativas */
