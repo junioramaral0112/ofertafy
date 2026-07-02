@@ -542,14 +542,14 @@ export const CATEGORIES = [
  * - Mercado Livre (matt_tool=35888960)
  * - Magalu (Magazine Você ofertafy)
  *
- * Lojas ADORMECIDAS (futuras):
- * - Shopee (API oficial, ativa quando SHOPEE_APP_ID + SHOPEE_SECRET preenchidos)
- * - Amazon (ativa quando AMAZON_ASSOCIATE_TAG preenchido)
+ * O registro de lojas agora é centralizado em lib/stores/registry.ts.
+ * Esta constante é mantida por compatibilidade com código legado.
  */
-export const STORES = [
-  { name: 'Mercado Livre', slug: 'mercadolivre', color: '#FFE600', active: true },
-  { name: 'Magalu',        slug: 'magalu',        color: '#0086FF', active: true },
-  { name: 'Amazon',        slug: 'amazon',        color: '#FF9900', active: true },
-  { name: 'Shopee',        slug: 'shopee',        color: '#EE4D2D', active: true },
-  { name: 'TikTok Shop',   slug: 'tiktok',        color: '#000000', active: true },
-] as const
+import { getActiveStores } from '@/lib/stores/registry'
+
+export const STORES = getActiveStores().map((s) => ({
+  name: s.name,
+  slug: s.slug,
+  color: s.color,
+  active: s.active,
+}))

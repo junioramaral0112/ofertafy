@@ -57,13 +57,7 @@ export interface PriceAnalysis {
 // REPUTAÇÃO DAS LOJAS (curadoria baseada em dados públicos)
 // ═══════════════════════════════════════════════════════════
 
-const STORE_REPUTATION: Record<string, number> = {
-  mercadolivre: 82,   // Maior marketplace, bom suporte
-  magalu: 78,         // Rede consolidada, logística própria
-  amazon: 85,         // Política de devolução forte
-  shopee: 65,         // Marketplace asiático, entrega mais lenta
-  tiktok: 50,         // Novo, pouca reputação de e-commerce
-}
+import { getStoreReputation } from '@/lib/stores/registry'
 
 // ═══════════════════════════════════════════════════════════
 // ÍNDICE OFERTAFY (0-100)
@@ -193,7 +187,7 @@ function evaluateShipping(offer: OfferData): Factor {
 }
 
 function evaluateStoreReputation(offer: OfferData): Factor {
-  const reputation = STORE_REPUTATION[offer.store] || 50
+  const reputation = getStoreReputation(offer.store)
   return {
     name: 'Loja',
     score: reputation,
