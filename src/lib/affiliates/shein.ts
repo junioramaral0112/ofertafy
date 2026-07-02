@@ -90,46 +90,171 @@ function sanitizeSheinUrl(rawUrl: string | undefined | null, productId: string):
 }
 
 // ═══════════════════════════════════════════════════════════
-// CONFIGURAÇÃO
+// CONFIGURAÇÃO DE BUSCA
 // ═══════════════════════════════════════════════════════════
 
-const SEARCH_TERMS = [
-  'vestido',
-  'blusa feminina',
-  'conjunto feminino',
-  'moda praia',
-  'tenis feminino',
-  'bolsa feminina',
-  'acessorios',
-  'maquiagem',
+interface SearchConfig {
+  term: string
+  category: string      // Nome da categoria Ofertafy
+  categorySlug: string  // Slug da categoria
+  pages: number         // Quantas páginas buscar
+}
+
+const SEARCH_CONFIGS: SearchConfig[] = [
+  // ── MODA FEMININA (30 termos) ──────────────
+  { term: 'vestido longo', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'vestido curto', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'vestido festa', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'vestido plus size', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'blusa feminina manga longa', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'cropped feminino', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'body feminino', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'regata feminina', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'conjunto feminino verao', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'saia midi', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'saia longa', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'calca wide leg', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'calca pantalona', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'legging feminina', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'shorts jeans feminino', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'biquini', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'maio praia', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'jaqueta jeans feminina', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'casaco tricot feminino', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'sueter feminino', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'cardigan feminino', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'camisola seda', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'pijama feminino', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'macacao longo', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'alfaiataria feminina', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'cintura alta', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'moda festa', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'conjunto lingerie', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'blusa transpassada', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+  { term: 'blusa ombro so', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 2 },
+
+  // ── MODA MASCULINA (18 termos) ─────────────
+  { term: 'camisa social masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'camisa manga longa masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'camiseta basica masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'camiseta estampada masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'polo masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'regata masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'calca jeans masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'calca sarja masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'calca jogger masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'bermuda masculina casual', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'bermuda jeans masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'moletom com capuz masculino', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'jaqueta corta vento masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'sueter masculino tricot', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'sobretudo masculino', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'cueca box algodao', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'terno masculino', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+  { term: 'conjunto masculino casual', category: 'Moda Masculina', categorySlug: 'moda-masculina', pages: 2 },
+
+  // ── CALÇADOS (15 termos) ───────────────────
+  { term: 'tenis feminino casual', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'tenis feminino academia', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'tenis masculino casual', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'tenis masculino corrida', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'sandalia rasteirinha', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'sandalia salto', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'sandalia plataforma', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'bota cano alto', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'bota cano curto', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'coturno feminino', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'sapato social masculino', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'mocassim masculino', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'chinelo slide', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'alpargata feminina', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+  { term: 'sapatilha baixa', category: 'Calçados', categorySlug: 'calcados', pages: 2 },
+
+  // ── BOLSAS (10 termos) ─────────────────────
+  { term: 'bolsa tiracolo couro', category: 'Bolsas', categorySlug: 'bolsas', pages: 2 },
+  { term: 'bolsa tote', category: 'Bolsas', categorySlug: 'bolsas', pages: 2 },
+  { term: 'bolsa transversal', category: 'Bolsas', categorySlug: 'bolsas', pages: 2 },
+  { term: 'bolsa praia', category: 'Bolsas', categorySlug: 'bolsas', pages: 2 },
+  { term: 'mochila casual', category: 'Bolsas', categorySlug: 'bolsas', pages: 2 },
+  { term: 'mochila notebook', category: 'Bolsas', categorySlug: 'bolsas', pages: 2 },
+  { term: 'carteira couro feminina', category: 'Bolsas', categorySlug: 'bolsas', pages: 2 },
+  { term: 'clutch festa', category: 'Bolsas', categorySlug: 'bolsas', pages: 2 },
+  { term: 'pochete moda', category: 'Bolsas', categorySlug: 'bolsas', pages: 2 },
+  { term: 'necessaire maquiagem', category: 'Bolsas', categorySlug: 'bolsas', pages: 2 },
+
+  // ── INFANTIL (10 termos) ───────────────────
+  { term: 'vestido infantil menina', category: 'Infantil', categorySlug: 'infantil', pages: 2 },
+  { term: 'conjunto infantil menina', category: 'Infantil', categorySlug: 'infantil', pages: 2 },
+  { term: 'conjunto infantil menino', category: 'Infantil', categorySlug: 'infantil', pages: 2 },
+  { term: 'camiseta infantil', category: 'Infantil', categorySlug: 'infantil', pages: 2 },
+  { term: 'short infantil', category: 'Infantil', categorySlug: 'infantil', pages: 2 },
+  { term: 'body bebe menina', category: 'Infantil', categorySlug: 'infantil', pages: 2 },
+  { term: 'body bebe menino', category: 'Infantil', categorySlug: 'infantil', pages: 2 },
+  { term: 'macacao bebe', category: 'Infantil', categorySlug: 'infantil', pages: 2 },
+  { term: 'calcado bebe', category: 'Infantil', categorySlug: 'infantil', pages: 2 },
+  { term: 'pijama infantil', category: 'Infantil', categorySlug: 'infantil', pages: 2 },
+
+  // ── BELEZA (12 termos) ─────────────────────
+  { term: 'base liquida', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'batom matte', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'blush powder', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'paleta sombra', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'delineador', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'mascara cilios', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'primer facial', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'serum facial', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'hidratante facial', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'protetor solar', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'perfume feminino', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
+  { term: 'perfume masculino', category: 'Beleza', categorySlug: 'beleza', pages: 2 },
 ]
+
+const RATE_LIMIT_MS = 600 // Delay entre páginas para evitar bloqueio
+const MAX_PAGES_PER_TERM = 5
 
 // ═══════════════════════════════════════════════════════════
 // FETCH PRINCIPAL
 // ═══════════════════════════════════════════════════════════
 
 export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer[]> {
-  console.log('👗 SHEIN: iniciando busca...')
+  console.log('👗 SHEIN: iniciando busca massiva...')
+  console.log(`   ${SEARCH_CONFIGS.length} termos, até ${MAX_PAGES_PER_TERM} páginas cada`)
   const all: RawOffer[] = []
   const seen = new Set<string>()
 
-  for (const term of SEARCH_TERMS) {
-    try {
-      const products = await searchSheinProducts(term)
-      let count = 0
+  for (let i = 0; i < SEARCH_CONFIGS.length; i++) {
+    const cfg = SEARCH_CONFIGS[i]
+    const pages = Math.min(cfg.pages, MAX_PAGES_PER_TERM)
 
-      for (const p of products) {
-        const offer = await buildSheinOffer(p, term)
-        if (offer && !seen.has(offer.sourceId)) {
-          seen.add(offer.sourceId)
-          all.push(offer)
-          count++
+    try {
+      let termTotal = 0
+
+      for (let page = 1; page <= pages; page++) {
+        const products = await searchSheinProducts(cfg.term, page)
+
+        for (const p of products) {
+          const offer = await buildSheinOffer(p, cfg)
+          if (offer && !seen.has(offer.sourceId)) {
+            seen.add(offer.sourceId)
+            all.push(offer)
+            termTotal++
+          }
+        }
+
+        // Rate limit entre páginas
+        if (page < pages) {
+          await new Promise(r => setTimeout(r, RATE_LIMIT_MS))
         }
       }
 
-      console.log(`   ${term}: ${count} ofertas`)
+      console.log(`   ${i + 1}/${SEARCH_CONFIGS.length} ${cfg.term}: ${termTotal} ofertas (${pages} páginas)`)
     } catch (e: any) {
-      console.error(`   ❌ ${term}: ${e.message?.slice(0, 80)}`)
+      console.error(`   ❌ ${cfg.term}: ${e.message?.slice(0, 80)}`)
+    }
+
+    // Rate limit extra entre termos diferentes
+    if (i < SEARCH_CONFIGS.length - 1) {
+      await new Promise(r => setTimeout(r, 300))
     }
   }
 
@@ -141,10 +266,8 @@ export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer
 // BUSCA DE PRODUTOS
 // ═══════════════════════════════════════════════════════════
 
-async function searchSheinProducts(keyword: string): Promise<any[]> {
-  const url = `https://www.shein.com.br/pdsearch/${encodeURIComponent(keyword)}/?page=1&sort=7`
-
-  console.log(`      🔍 Buscando: ${keyword}`)
+async function searchSheinProducts(keyword: string, page: number = 1): Promise<any[]> {
+  const url = `https://www.shein.com.br/pdsearch/${encodeURIComponent(keyword)}/?page=${page}&sort=7`
 
   const res = await fetch(url, {
     headers: {
@@ -242,7 +365,7 @@ async function searchSheinProducts(keyword: string): Promise<any[]> {
 // CONSTRUÇÃO DA OFERTA
 // ═══════════════════════════════════════════════════════════
 
-async function buildSheinOffer(product: any, keyword: string): Promise<RawOffer | null> {
+async function buildSheinOffer(product: any, config: SearchConfig): Promise<RawOffer | null> {
   try {
     const productId = String(product.id || '')
     const title = (product.title || '').trim()
@@ -253,7 +376,9 @@ async function buildSheinOffer(product: any, keyword: string): Promise<RawOffer 
     let originalPrice = Number(product.originalPrice || 0)
 
     if (price <= 0) return null
-    if (originalPrice <= price) {
+
+    // Preço original estimado se não disponível ou inválido
+    if (originalPrice <= price || originalPrice <= 0) {
       originalPrice = Math.round(price * 1.4 * 100) / 100
     }
 
@@ -261,8 +386,9 @@ async function buildSheinOffer(product: any, keyword: string): Promise<RawOffer 
       ? Math.round(((originalPrice - price) / originalPrice) * 100)
       : 0
 
-    const finalPrice = sanitizePrice(String(price))
-    const finalOrig = sanitizePrice(String(originalPrice))
+    // Usar o preço diretamente — sanitizePrice só para strings formatadas
+    const finalPrice = typeof price === 'string' ? sanitizePrice(price) : price
+    const finalOrig = typeof originalPrice === 'string' ? sanitizePrice(String(originalPrice)) : originalPrice
 
     if (finalPrice <= 0) return null
 
@@ -273,8 +399,9 @@ async function buildSheinOffer(product: any, keyword: string): Promise<RawOffer 
       ? product.image.startsWith('http') ? product.image : `https://img.shein.com/${product.image}`
       : `https://picsum.photos/seed/shein-${productId}/400/400`
 
-    const catName = keyword.charAt(0).toUpperCase() + keyword.slice(1)
-    const catSlug = catName.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-')
+    // Usar categoria do SearchConfig (mapeamento estruturado)
+    const catName = config.category
+    const catSlug = config.categorySlug
 
     const installment = finalPrice > 40 ? `3x R$ ${(finalPrice / 3).toFixed(2)}` : null
     const freeShipping = finalPrice > 50
