@@ -4,9 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:safe": "npm run clean:cache && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "clean": "node scripts/clean-cache.js",
+    "clean:cache": "node scripts/clean-cache.js",
+    "reset": "node scripts/clean-cache.js && prisma generate",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
@@ -14,7 +18,7 @@
     "fetch": "tsx src/scripts/fetch-offers.ts",
     "audit": "tsx scripts/auditar-links.ts",
     "clean-dead-links": "tsx scripts/limpar-links-mortos.ts",
-    "postinstall": "prisma generate && npx puppeteer browsers install chrome || true",
+    "postinstall": "prisma generate",
     "deploy:setup": "npm install && prisma generate && prisma db push && npm run build",
     "deploy:start": "pm2 start ecosystem.config.cjs",
     "deploy:reload": "npm run build && pm2 reload ecosystem.config.cjs"
