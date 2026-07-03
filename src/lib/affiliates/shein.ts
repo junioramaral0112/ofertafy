@@ -28,15 +28,39 @@ interface DepartmentConfig {
 // ═══════════════════════════════════════════════════════════
 
 const DEPARTMENTS: DepartmentConfig[] = [
-  { url: 'https://br.shein.com/women/', category: 'Moda Feminina', categorySlug: 'moda-feminina', maxPages: 25 },
-  { url: 'https://br.shein.com/kids/', category: 'Infantil', categorySlug: 'infantil', maxPages: 10 },
-  { url: 'https://br.shein.com/swimwear/', category: 'Moda Feminina', categorySlug: 'moda-feminina', maxPages: 10 },
+  { url: 'https://br.shein.com/women/', category: 'Moda Feminina', categorySlug: 'moda-feminina', maxPages: 20 },
+  { url: 'https://br.shein.com/kids/', category: 'Infantil', categorySlug: 'infantil', maxPages: 8 },
 ]
 
-const RATE_LIMIT_MS = 600
+// Termos de busca para categorias sem suporte a departamentos
+interface SearchSeed { term: string; category: string; categorySlug: string }
+
+const SEARCH_SEEDS: SearchSeed[] = [
+  { term: 'camiseta masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina' },
+  { term: 'camisa social masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina' },
+  { term: 'calca jeans masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina' },
+  { term: 'bermuda masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina' },
+  { term: 'camisa polo masculina', category: 'Moda Masculina', categorySlug: 'moda-masculina' },
+  { term: 'moletom masculino', category: 'Moda Masculina', categorySlug: 'moda-masculina' },
+  { term: 'tenis casual masculino', category: 'Calçados', categorySlug: 'calcados' },
+  { term: 'tenis feminino', category: 'Calçados', categorySlug: 'calcados' },
+  { term: 'sandalia feminina', category: 'Calçados', categorySlug: 'calcados' },
+  { term: 'bota feminina', category: 'Calçados', categorySlug: 'calcados' },
+  { term: 'chinelo', category: 'Calçados', categorySlug: 'calcados' },
+  { term: 'bolsa tiracolo', category: 'Bolsas', categorySlug: 'bolsas' },
+  { term: 'bolsa transversal', category: 'Bolsas', categorySlug: 'bolsas' },
+  { term: 'mochila', category: 'Bolsas', categorySlug: 'bolsas' },
+  { term: 'carteira feminina', category: 'Bolsas', categorySlug: 'bolsas' },
+  { term: 'maquiagem', category: 'Beleza', categorySlug: 'beleza' },
+  { term: 'batom', category: 'Beleza', categorySlug: 'beleza' },
+  { term: 'perfume', category: 'Beleza', categorySlug: 'beleza' },
+]
+
+const RATE_LIMIT_MS = 500
 
 // ═══════════════════════════════════════════════════════════
-// FETCH PRINCIPAL
+// FETCH PRINCIPAL (departamentos + busca)
+// ═══════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════
 
 export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer[]> {
@@ -72,6 +96,35 @@ export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer
     }
 
     console.log(`      ✅ ${deptTotal} ofertas (total: ${all.length})`)
+  }
+
+  // ── FASE 2: Busca por termos (categorias sem departamento) ──
+  console.log(`\n   🔍 Fase 2: ${SEARCH_SEEDS.length} termos de busca...`)
+
+  for (const seed of SEARCH_SEEDS) {
+    try {
+      const products = await scrapeDepartmentPage(
+        `https://br.shein.com/pdsearch/${encodeURIComponent(seed.term)}/?page=1&sort=7`,
+        { category: seed.category, categorySlug: seed.categorySlug } as DepartmentConfig,
+      )
+
+      let termNew = 0
+      for (const p of products) {
+        if (!seen.has(p.sourceId)) {
+          seen.add(p.sourceId)
+          all.push({ ...p, category: seed.category, categorySlug: seed.categorySlug })
+          termNew++
+        }
+      }
+
+      if (termNew > 0) {
+        console.log(`      ${seed.term}: ${termNew} novas (total: ${all.length})`)
+      }
+
+      await new Promise(r => setTimeout(r, RATE_LIMIT_MS))
+    } catch (e: any) {
+      // Silencioso — alguns termos podem falhar
+    }
   }
 
   console.log(`👗 SHEIN total: ${all.length} ofertas`)
