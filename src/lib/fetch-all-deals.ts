@@ -42,17 +42,21 @@ export async function fetchAllDeals(): Promise<FetchResult[]> {
   const config = getAffiliateConfig()
   const results: FetchResult[] = []
 
-  // Lojas principais (sem Puppeteer)
+  // Lojas leves (sem Puppeteer)
   const [mlDeals, magaluDeals, shopeeDeals, tiktokDeals, sheinDeals] = await Promise.all([
     fetchMercadoLivreDeals(config).catch((e) => { console.error('ML:', e); return [] }),
     fetchMagaluDeals(config).catch((e) => { console.error('Magalu:', e); return [] }),
     fetchShopeeDeals(config).catch((e) => { console.error('Shopee:', e); return [] }),
     fetchTikTokDeals(config).catch((e) => { console.error('TikTok:', e); return [] }),
+    // SHEIN leve (fetch-based) — fallback rápido
     fetchSheinDeals(config).catch((e) => { console.error('SHEIN:', e); return [] }),
   ])
 
-  // Amazon — import dinâmico ISOLADO (Puppeteer ~300 MB)
+  // Amazon + SHEIN Puppeteer — imports dinâmicos ISOLADOS
   let amazonDeals: any[] = []
+  let sheinPuppeteerDeals: any[] = []
+
+  // Amazon — Puppeteer
   if (config.amazonAssociateTag || process.env.AMAZON_ASSOCIATE_TAG) {
     try {
       const { fetchAmazonDeals } = await import('./affiliates/amazon')
@@ -63,6 +67,17 @@ export async function fetchAllDeals(): Promise<FetchResult[]> {
     } catch (e: any) {
       console.error('Amazon (import):', e.message?.slice(0, 120))
     }
+  }
+
+  // SHEIN — Puppeteer (renderização completa, todos os departamentos)
+  try {
+    const { fetchSheinDealsPuppeteer } = await import('./affiliates/shein-puppeteer')
+    sheinPuppeteerDeals = await fetchSheinDealsPuppeteer(config).catch((e: any) => {
+      console.error('SHEIN Puppeteer:', e.message?.slice(0, 120))
+      return []
+    })
+  } catch (e: any) {
+    console.error('SHEIN Puppeteer (import):', e.message?.slice(0, 120))
   }
 
   // Processar e salvar no banco
@@ -120,12 +135,17 @@ export async function fetchAllDeals(): Promise<FetchResult[]> {
     return { store: storeLabel, offersFound: deals.length, offersAdded: added, offersUpdated: updated, errors: errors.slice(0, 5) }
   }
 
+  // Merge SHEIN: fetch leve + Puppeteer (dedup por sourceId)
+  const sheinSeen = new Set(sheinDeals.map((d: any) => d.sourceId))
+  const sheinPuppeteerNew = sheinPuppeteerDeals.filter((d: any) => !sheinSeen.has(d.sourceId))
+  const allSheinDeals = [...sheinDeals, ...sheinPuppeteerNew]
+
   const [mlResult, magaluResult, shopeeResult, tiktokResult, sheinResult] = await Promise.all([
     processStore(mlDeals, 'Mercado Livre'),
     processStore(magaluDeals, 'Magalu'),
     processStore(shopeeDeals, 'Shopee'),
     processStore(tiktokDeals, 'TikTok Shop'),
-    processStore(sheinDeals, 'SHEIN'),
+    processStore(allSheinDeals, 'SHEIN'),
   ])
 
   results.push(mlResult, magaluResult, shopeeResult, tiktokResult, sheinResult)
