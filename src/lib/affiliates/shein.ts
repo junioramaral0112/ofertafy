@@ -147,7 +147,7 @@ export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer
 // ═══════════════════════════════════════════════════════════
 
 async function searchProducts(keyword: string, page: number): Promise<RapidApiProduct[]> {
-  const url = `${RAPIDAPI_BASE}/shein/product/search?keyword=${encodeURIComponent(keyword)}&page=${page}&country=BR&lang=pt`
+  const url = `${RAPIDAPI_BASE}/product/search?q=${encodeURIComponent(keyword)}&page=${page}&country=BR`
 
   const res = await fetch(url, {
     method: 'GET',
