@@ -35,18 +35,6 @@ interface RapidApiProduct {
 // CONFIGURAÇÃO
 // ═══════════════════════════════════════════════════════════
 
-const RAPIDAPI_BASE = 'https://shein-scraper-api.p.rapidapi.com'
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || ''
-const RAPIDAPI_HOST = 'shein-scraper-api.p.rapidapi.com'
-
-function rapidApiHeaders(): Record<string, string> {
-  return {
-    'X-RapidAPI-Key': RAPIDAPI_KEY,
-    'X-RapidAPI-Host': RAPIDAPI_HOST,
-    'Content-Type': 'application/json',
-  }
-}
-
 const SEARCH_CONFIGS: SearchConfig[] = [
   // ── MODA FEMININA ──────────────────────────
   { term: 'vestido', category: 'Moda Feminina', categorySlug: 'moda-feminina', pages: 4 },
@@ -100,11 +88,6 @@ export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer
   console.log('👗 SHEIN RapidAPI: iniciando...')
   console.log(`   ${SEARCH_CONFIGS.length} termos, até 4 páginas cada`)
 
-  if (!RAPIDAPI_KEY) {
-    console.error('❌ RAPIDAPI_KEY não configurada no .env')
-    return []
-  }
-
   const all: RawOffer[] = []
   const seen = new Set<string>()
 
@@ -147,24 +130,39 @@ export async function fetchSheinDeals(config: AffiliateConfig): Promise<RawOffer
 // ═══════════════════════════════════════════════════════════
 
 async function searchProducts(keyword: string, page: number): Promise<RapidApiProduct[]> {
-  const url = `${RAPIDAPI_BASE}/shein/product/search?keyword=${encodeURIComponent(keyword)}&page=${page}&country=BR`
+  const url = `https://www.shein.com.br/pdsearch/${encodeURIComponent(keyword)}/?page=${page}&sort=7`
 
   const res = await fetch(url, {
-    method: 'GET',
-    headers: rapidApiHeaders(),
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Accept': 'text/html',
+      'Accept-Language': 'pt-BR',
+    },
     signal: AbortSignal.timeout(15000),
   })
 
-  if (!res.ok) {
-    if (res.status === 429) throw new Error('Rate limit excedido')
-    throw new Error(`HTTP ${res.status}`)
+  if (!res.ok) return []
+
+  const html = await res.text()
+  const products: RapidApiProduct[] = []
+
+  const ids = [...new Set(Array.from(html.matchAll(/"goods_id"\s*:\s*"(\d+)"/g)).map(m => m[1]))]
+  const names = Array.from(html.matchAll(/"goods_name"\s*:\s*"([^"]+)"/g)).map(m => m[1])
+  const imgs = Array.from(html.matchAll(/"goods_img"\s*:\s*"([^"]+)"/g)).map(m => m[1])
+  const amounts = Array.from(html.matchAll(/"salePrice"\s*:\s*\{[^}]*?"amount"\s*:\s*"([^"]+)"/g)).map(m => parseFloat(m[1]))
+
+  for (let i = 0; i < Math.min(ids.length, names.length, amounts.length); i++) {
+    if (amounts[i] > 0) {
+      products.push({
+        goods_id: ids[i],
+        goods_name: names[i],
+        goods_img: imgs[i],
+        sale_price: amounts[i],
+      })
+    }
   }
 
-  const data = await res.json()
-
-  // A API pode retornar { products: [...] } ou array direto
-  const products = data?.products || data?.data?.products || data || []
-  return Array.isArray(products) ? products : []
+  return products
 }
 
 // ═══════════════════════════════════════════════════════════

@@ -28,20 +28,21 @@ import crypto from 'crypto'
 const GRAPHQL_ENDPOINT = 'https://open-api.affiliate.shopee.com.br/graphql'
 
 const SEARCH_TERMS = [
-  'smartphone',
-  'notebook',
-  'fone bluetooth',
-  'tv smart',
-  'geladeira',
-  'aspirador',
-  'cafeteira',
-  'tenis',
-  'perfume',
-  'microfone',
+  'smartphone', 'notebook', 'fone bluetooth', 'tv smart', 'geladeira',
+  'aspirador', 'cafeteira', 'tenis', 'perfume', 'microfone',
+  'celular', 'tablet', 'monitor', 'teclado', 'mouse gamer', 'headset',
+  'caixa som', 'soundbar', 'ssd', 'memoria ram', 'placa mae', 'gabinete',
+  'impressora', 'roteador', 'kindle', 'camera', 'drone',
+  'camiseta', 'calca jeans', 'vestido', 'bolsa', 'mochila', 'relogio',
+  'creme', 'maquiagem', 'shampoo', 'air fryer', 'microondas',
+  'ventilador', 'ar condicionado', 'bicicleta', 'colchao',
+  'cadeira escritorio', 'mesa', 'furadeira', 'kit ferramentas',
+  'panela', 'liquidificador', 'ferro passar', 'batedeira',
+  'pneu', 'bebe brinquedo', 'pet racao', 'livro',
 ]
 
 const ITEMS_PER_PAGE = 50
-const MAX_PAGES = 2
+const MAX_PAGES = 3
 
 // ---------------------------------------------------------------------------
 // Tipos internos

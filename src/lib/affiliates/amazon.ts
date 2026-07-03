@@ -36,18 +36,24 @@ export async function fetchAmazonDeals(config: AffiliateConfig) {
     'https://www.amazon.com.br/deals?ref_=nav_cs_gb',
   ]
 
-  // Termos de busca com desconto
+  // 50+ termos de busca em múltiplas categorias
   const searchTerms = [
-    'smartphone',
-    'notebook',
-    'tv',
-    'fone-bluetooth',
-    'aspirador',
-    'cafeteira',
+    'smartphone', 'notebook', 'tv', 'fone-bluetooth', 'aspirador', 'cafeteira',
+    'geladeira', 'fogao', 'maquina-lavar', 'microondas', 'air-fryer',
+    'ventilador', 'ar-condicionado', 'tablet', 'monitor', 'teclado',
+    'mouse-gamer', 'headset', 'caixa-som', 'soundbar', 'ssd', 'memoria-ram',
+    'placa-mae', 'gabinete-gamer', 'impressora', 'roteador', 'kindle',
+    'camera', 'drone', 'celular', 'smartwatch',
+    'tenis-masculino', 'tenis-feminino', 'camiseta', 'calca-jeans',
+    'vestido', 'bolsa-feminina', 'mochila', 'relogio',
+    'perfume', 'creme-hidratante', 'maquiagem', 'shampoo',
+    'furadeira', 'kit-ferramentas', 'bicicleta', 'colchao',
+    'cadeira-escritorio', 'mesa', 'panela', 'liquidificador',
+    'bebe-brinquedo', 'pet-racao', 'livro',
   ]
 
   for (const term of searchTerms) {
-    urls.push(`https://www.amazon.com.br/s?k=${term}&s=exact-aware-popularity-rank&i=electronics`)
+    urls.push(`https://www.amazon.com.br/s?k=${encodeURIComponent(term)}&s=exact-aware-popularity-rank`)
   }
 
   console.log('🟠 Amazon: iniciando Puppeteer Stealth...')

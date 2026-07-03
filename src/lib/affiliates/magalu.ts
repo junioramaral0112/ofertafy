@@ -28,18 +28,18 @@ export async function fetchMagaluDeals(config: AffiliateConfig) {
   const storeId = config.magaluStoreId || 'ofertafy'
   const all: RawOffer[] = []
 
-  // Magazine Voce — paginas de busca que retornam dados de produtos
+  // Magazine Voce — 40+ categorias para busca massiva
   const searchTerms = [
-    'smartphone',
-    'notebook',
-    'tv',
-    'geladeira',
-    'fogao',
-    'maquina-lavar',
-    'aspirador',
-    'cafeteira',
-    'tenis',
-    'perfume',
+    'smartphone', 'notebook', 'tv', 'geladeira', 'fogao', 'maquina-lavar',
+    'aspirador', 'cafeteira', 'tenis', 'perfume',
+    'air-fryer', 'microondas', 'ventilador', 'ar-condicionado', 'celular',
+    'tablet', 'monitor', 'teclado', 'mouse', 'headset', 'caixa-som',
+    'soundbar', 'ssd', 'memoria-ram', 'placa-mae', 'gabinete-gamer',
+    'impressora', 'roteador', 'kindle', 'camera', 'drone',
+    'camiseta', 'calca-jeans', 'vestido', 'bolsa', 'mochila', 'relogio',
+    'creme-hidratante', 'maquiagem', 'shampoo', 'bicicleta', 'colchao',
+    'cadeira-escritorio', 'mesa', 'furadeira', 'kit-ferramentas',
+    'panela', 'liquidificador', 'ferro-passar', 'aspirador-po',
   ]
 
   console.log(`🔵 Magalu: buscando via Magazine Voce (magazine${storeId})...`)

@@ -22,25 +22,52 @@ interface RawOffer {
   scorePromocional?: number
 }
 
+// 40 categorias para busca massiva
+const ML_SEARCH_TERMS = [
+  'celular smartphone', 'notebook', 'tv smart', 'geladeira', 'fogao', 'maquina lavar',
+  'aspirador', 'cafeteira', 'air fryer', 'microondas', 'ventilador', 'ar condicionado',
+  'tenis masculino', 'tenis feminino', 'camiseta', 'calca jeans', 'vestido', 'bolsa feminina',
+  'mochila', 'relogio', 'perfume', 'creme hidratante', 'maquiagem', 'shampoo',
+  'furadeira', 'kit ferramentas', 'bicicleta', 'colchao', 'travesseiro', 'jogo cama',
+  'cadeira escritorio', 'mesa', 'monitor', 'teclado', 'mouse gamer', 'headset',
+  'ssd', 'memoria ram', 'placa mae', 'fonte', 'gabinete gamer',
+  'impressora', 'roteador', 'tablet', 'kindle', 'caixa som', 'soundbar',
+  'drone', 'camera', 'pneu', 'oleo motor', 'bebe brinquedo', 'pet racao',
+  'livro', 'panela', 'liquidificador', 'batedeira', 'ferro passar', 'purificador agua',
+  'guarda roupa', 'sofa', 'poltrona', 'tapete', 'cortina', 'luminaria',
+]
+
 export async function fetchMercadoLivreDeals(config: AffiliateConfig) {
   const all: RawOffer[] = []
+  const seen = new Set<string>()
   const mattTool = config.mlMattTool || '35888960'
-  const pages = ['https://www.mercadolivre.com.br/ofertas', 'https://www.mercadolivre.com.br/ofertas?page=2']
 
-  for (const url of pages) {
+  console.log('🟡 ML: iniciando busca massiva (' + ML_SEARCH_TERMS.length + ' termos)')
+
+  for (const term of ML_SEARCH_TERMS) {
     try {
-      const res = await fetch(url, { headers: ML_HEADERS })
+      const url = `https://www.mercadolivre.com.br/search?q=${encodeURIComponent(term)}`
+      const res = await fetch(url, { headers: ML_HEADERS, signal: AbortSignal.timeout(15000) })
       if (!res.ok) continue
       const html = await res.text()
       const offers = extractMLItems(html, mattTool)
-      all.push(...offers)
-      console.log(`ML ${url}: ${offers.length} ofertas`)
-    } catch (e) {
-      console.error(`ML erro ${url}:`, e)
+
+      let count = 0
+      for (const o of offers) {
+        if (!seen.has(o.sourceId)) {
+          seen.add(o.sourceId)
+          all.push(o)
+          count++
+        }
+      }
+      if (count > 0) console.log(`   ${term}: ${count} ofertas`)
+    } catch (e: any) {
+      // Silencioso — continua próximo termo
     }
+    await new Promise(r => setTimeout(r, 300))
   }
 
-  console.log(`ML total: ${all.length} ofertas`)
+  console.log(`🟡 ML total: ${all.length} ofertas (${seen.size} únicas)`)
   return all
 }
 
