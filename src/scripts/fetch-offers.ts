@@ -107,20 +107,25 @@ async function saveOffersBulk(allDeals: any[]): Promise<{ added: number; updated
 
   let added = 0, updated = 0, errors = 0
 
-  // ── 3. createMany em lotes ─────────────────────────────
-  for (let i = 0; i < novos.length; i += BATCH_SIZE) {
-    const batch = novos.slice(i, i + BATCH_SIZE)
+  // ── 3. Criar um por um (mais confiável que createMany) ──
+  for (let i = 0; i < novos.length; i++) {
     try {
-      await prisma.offer.createMany({ data: batch, skipDuplicates: true })
-      added += batch.length
+      await prisma.offer.create({ data: novos[i] })
+      added++
     } catch (e: any) {
-      console.error(`   ❌ createMany lote ${Math.floor(i / BATCH_SIZE) + 1}: ${e.message?.slice(0, 80)}`)
-      // Fallback: criar um por um
-      for (const d of batch) {
-        try { await prisma.offer.create({ data: d }); added++ } catch { errors++ }
+      // Tentar sem os campos problemáticos
+      try {
+        const { scorePromocional, ...safe } = novos[i]
+        await prisma.offer.create({ data: safe })
+        added++
+      } catch {
+        errors++
       }
     }
-    if (i + BATCH_SIZE < novos.length) await sleep(BATCH_DELAY_MS)
+    if (i > 0 && i % 50 === 0) {
+      process.stdout.write(`   ${i}/${novos.length}\r`)
+      await sleep(50)
+    }
   }
 
   // ── 4. Updates em lote ─────────────────────────────────
