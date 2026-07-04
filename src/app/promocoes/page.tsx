@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Calendário de Promoções 2026 — Ofertafy',
   description: 'Confira o calendário completo de promoções: Shopee 7.7, Prime Day, Black Friday, Meli Days e muito mais.',
