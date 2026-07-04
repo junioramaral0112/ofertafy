@@ -17,7 +17,7 @@ interface Props {
 export default function MobileDealStack({ offers }: Props) {
   if (!offers || offers.length === 0) return null
 
-  const sorted = [...offers].sort((a, b) => (b.scorePromocional || 0) - (a.scorePromocional || 0))
+  const sorted = [...offers].sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0))
   const hero = sorted[0]
   const miniCards = sorted.slice(1, 4)
 
