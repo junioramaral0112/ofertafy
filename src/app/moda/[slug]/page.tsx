@@ -91,12 +91,21 @@ type Props = { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const config = MODA_PAGES[slug]
-  if (!config) return { title: 'Moda — Ofertafy' }
+  if (!config) return { title: 'Moda — Ofertafy', robots: 'noindex' as const }
+
+  // Verificar se há ofertas para este slug
+  const count = await prisma.offer.count({
+    where: {
+      OR: config.keywords.map((kw) => ({ title: { contains: kw, mode: 'insensitive' as const } })),
+      price: { gt: 0 },
+    },
+  })
 
   return {
     title: config.title,
     description: config.desc,
     alternates: { canonical: `/moda/${slug}` },
+    robots: count === 0 ? 'noindex, follow' : undefined,
     openGraph: {
       title: config.title,
       description: config.desc,

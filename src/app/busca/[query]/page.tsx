@@ -9,13 +9,20 @@ type Props = { params: Promise<{ query: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { query } = await params
   const term = decodeURIComponent(query).replace(/-/g, ' ')
+  const words = term.split(/\s+/).filter((w: string) => w.length > 1)
   const title = `${capitalize(term)} — Melhores Preços e Ofertas | Ofertafy`
-  const desc = `Compare preços de ${term} no Mercado Livre, Amazon, Shopee e Magalu. Encontre as melhores ofertas de ${term} com desconto.`
+  const desc = `Compare preços de ${term} no Mercado Livre, Amazon, Shopee e Magalu.`
+
+  // Verificar se há ofertas
+  const count = words.length > 0
+    ? await prisma.offer.count({ where: { OR: words.map((w: string) => ({ title: { contains: w, mode: 'insensitive' as const } })) } })
+    : 0
 
   return {
     title,
     description: desc,
     alternates: { canonical: `/busca/${query}` },
+    robots: count === 0 ? 'noindex, follow' : undefined,
     openGraph: {
       title,
       description: desc,
