@@ -16,9 +16,12 @@ import { resolve } from 'path'
 import { PrismaClient } from '@prisma/client'
 
 const LINKS_FILE = resolve(process.cwd(), 'shein_links.txt')
-const DELAY_MS = 800
+const MIN_DELAY_MS = 800
+const MAX_DELAY_MS = 1500
 const TIMEOUT_MS = 15000
 const MAX_RETRIES = 2
+const BATCH_SIZE = 10          // Links processados por lote
+const BATCH_REST_MS = 5000      // Pausa extra entre lotes (anti-bloqueio)
 
 const prisma = new PrismaClient()
 
@@ -175,58 +178,71 @@ async function main() {
   const productIds = Array.from(idMap.keys())
   console.log(`🆔 ${productIds.length} IDs únicos extraídos\n`)
 
-  // 3. Buscar dados de cada produto
+  // 3. Processar em lotes com delay randômico (anti-bloqueio)
+  const totalBatches = Math.ceil(productIds.length / BATCH_SIZE)
   let imported = 0
   let skipped = 0
   let errors = 0
+  const startTime = Date.now()
 
-  for (let i = 0; i < productIds.length; i++) {
-    const id = productIds[i]
-    const originalUrl = idMap.get(id)!
-    const progress = `${i + 1}/${productIds.length}`
+  for (let batch = 0; batch < totalBatches; batch++) {
+    const batchStart = batch * BATCH_SIZE
+    const batchIds = productIds.slice(batchStart, batchStart + BATCH_SIZE)
 
-    process.stdout.write(`   ${progress} ${id.padEnd(12)} `)
+    console.log(`\n📦 Lote ${batch + 1}/${totalBatches} (${batchIds.length} produtos)`)
+    console.log('─'.repeat(50))
 
-    // Verificar se já existe
-    const existing = await prisma.offer.findFirst({
-      where: { sourceId: `shein-${id}`, store: 'shein' },
-    })
+    for (let j = 0; j < batchIds.length; j++) {
+      const id = batchIds[j]
+      const globalIndex = batchStart + j + 1
+      const progress = `[${String(globalIndex).padStart(4)}/${productIds.length}]`
 
-    if (existing) {
-      console.log('⏭  já existe')
-      skipped++
-      await sleep(300)
-      continue
+      process.stdout.write(`   ${progress} ID:${id.padEnd(12)} `)
+
+      // Verificar se já existe
+      const existing = await prisma.offer.findFirst({
+        where: { sourceId: `shein-${id}`, store: 'shein' },
+      })
+
+      if (existing) {
+        console.log('⏭  já existe')
+        skipped++
+      } else {
+        // Buscar dados
+        const data = await fetchProductData(id)
+
+        if (!data) {
+          console.log('❌ sem dados')
+          errors++
+        } else {
+          const offer = buildOffer(id, data)
+          try {
+            await prisma.offer.create({ data: offer as any })
+            console.log(`✅ ${data.title.slice(0, 40)} | R$${data.price.toFixed(2)}`)
+            imported++
+          } catch (e: any) {
+            console.log(`❌ save: ${e.message?.slice(0, 30)}`)
+            errors++
+          }
+        }
+      }
+
+      // Delay randômico entre links (simula usuário real)
+      const delay = MIN_DELAY_MS + Math.floor(Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS))
+      await sleep(delay)
     }
 
-    // Buscar dados
-    const data = await fetchProductData(id)
-
-    if (!data) {
-      console.log('❌ sem dados')
-      errors++
-      await sleep(DELAY_MS)
-      continue
-    }
-
-    // Salvar
-    const offer = buildOffer(id, data)
-    try {
-      await prisma.offer.create({ data: offer as any })
-      console.log(`✅ ${data.title.slice(0, 40)} | R$${data.price}`)
-      imported++
-    } catch (e: any) {
-      console.log(`❌ save: ${e.message?.slice(0, 40)}`)
-      errors++
-    }
-
-    // Rate limit
-    if (i < productIds.length - 1) {
-      await sleep(DELAY_MS)
+    // Pausa extra entre lotes (respiração anti-bloqueio)
+    if (batch < totalBatches - 1) {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(0)
+      console.log(`\n   ⏸  Pausa de ${BATCH_REST_MS / 1000}s... (${elapsed}s decorridos)`)
+      await sleep(BATCH_REST_MS)
     }
   }
 
-  console.log(`\n✅ Importado: ${imported} | ⏭  Pulados: ${skipped} | ❌ Erros: ${errors}`)
+  const totalTime = ((Date.now() - startTime) / 1000).toFixed(0)
+  console.log(`\n⏱  Tempo total: ${totalTime}s`)
+  console.log(`✅ Importado: ${imported} | ⏭  Pulados: ${skipped} | ❌ Erros: ${errors}`)
 
   // Estatísticas
   const total = await prisma.offer.count({ where: { store: 'shein' } })
