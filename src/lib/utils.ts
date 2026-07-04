@@ -431,6 +431,43 @@ const CATEGORY_RULES: CategoryRule[] = [
     slug: 'esportes',
     keywords: ['academia', 'yoga', 'musculação', 'bicicleta', 'corda de pular', 'garrafa', 'tapete', 'luva', 'bandagem', 'tornozeleira', 'camiseta dry', 'bermuda térmica', 'bola', 'raquete', 'patins'],
   },
+  // ── Novas categorias ────────────────────────
+  {
+    name: 'Móveis para Jardim',
+    slug: 'moveis-jardim',
+    keywords: ['móvel jardim', 'mesa jardim', 'sofá jardim', 'conjunto jardim', 'banco jardim', 'espreguiçadeira', 'guarda-sol', 'ombrelone', 'pergolado', 'gazebo', 'rede descanso', 'balanço jardim', 'pérgola'],
+    requireMatch: true,
+  },
+  {
+    name: 'Cadeiras e Bancos de Jardim',
+    slug: 'cadeiras-jardim',
+    keywords: ['cadeira jardim', 'banco jardim', 'banco madeira', 'cadeira externa', 'cadeira área externa', 'cadeira varanda', 'banco externo', 'cadeira piscina'],
+    requireMatch: true,
+  },
+  {
+    name: 'Cadeiras de Praia',
+    slug: 'cadeiras-praia',
+    keywords: ['cadeira praia', 'cadeira dobrável', 'cadeira camping', 'cadeira areia', 'banco praia', 'cadeira descanso', 'cadeira leve dobrável'],
+    requireMatch: true,
+  },
+  {
+    name: 'Esportes e Fitness',
+    slug: 'esportes-fitness',
+    keywords: ['fitness', 'musculação', 'crossfit', 'halter', 'peso academia', 'caneleira', 'elástico exercício', 'colchonete', 'step', 'banco supino', 'barra fixa', 'bicicleta ergométrica', 'esteira', 'eliptico', 'corda pular profissional'],
+    requireMatch: true,
+  },
+  {
+    name: 'Camping, Caça e Pesca',
+    slug: 'camping-caca-pesca',
+    keywords: ['barraca camping', 'saco dormir', 'lanterna camping', 'fogareiro', 'mochila camping', 'faca caça', 'anzol', 'vara pesca', 'carretilha', 'molinete', 'linha pesca', 'isca artificial', 'bota trilha', 'cantil', 'faca sobrevivência'],
+    requireMatch: true,
+  },
+  {
+    name: 'Acessórios de Camping',
+    slug: 'acessorios-camping',
+    keywords: ['lanterna led', 'colchão inflável', 'bomba ar', 'talher camping', 'prato camping', 'caneca camping', 'fogareiro gás', 'lampião', 'cooler', 'galão água', 'corda camping', 'estaca barraca', 'kit camping', 'cobertor emergência', 'almofada viagem'],
+    requireMatch: true,
+  },
 ]
 
 /**
@@ -574,6 +611,12 @@ export const CATEGORIES = [
   { name: 'Pets', slug: 'pets' },
   { name: 'Livros', slug: 'livros' },
   { name: 'Automotivo', slug: 'automotivo' },
+  { name: 'Móveis para Jardim', slug: 'moveis-jardim' },
+  { name: 'Cadeiras e Bancos de Jardim', slug: 'cadeiras-jardim' },
+  { name: 'Cadeiras de Praia', slug: 'cadeiras-praia' },
+  { name: 'Esportes e Fitness', slug: 'esportes-fitness' },
+  { name: 'Camping, Caça e Pesca', slug: 'camping-caca-pesca' },
+  { name: 'Acessórios de Camping', slug: 'acessorios-camping' },
 ] as const
 
 /**

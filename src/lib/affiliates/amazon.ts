@@ -50,6 +50,9 @@ export async function fetchAmazonDeals(config: AffiliateConfig) {
     'furadeira', 'kit-ferramentas', 'bicicleta', 'colchao',
     'cadeira-escritorio', 'mesa', 'panela', 'liquidificador',
     'bebe-brinquedo', 'pet-racao', 'livro',
+    'movel-jardim', 'cadeira-praia', 'barraca-camping', 'saco-dormir',
+    'lanterna-led', 'halter-academia', 'bicicleta-ergometrica', 'esteira',
+    'vara-pesca', 'colchao-inflavel', 'cadeira-dobravel',
   ]
 
   for (const term of searchTerms) {

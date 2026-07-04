@@ -40,6 +40,9 @@ export async function fetchMagaluDeals(config: AffiliateConfig) {
     'creme-hidratante', 'maquiagem', 'shampoo', 'bicicleta', 'colchao',
     'cadeira-escritorio', 'mesa', 'furadeira', 'kit-ferramentas',
     'panela', 'liquidificador', 'ferro-passar', 'aspirador-po',
+    'movel-jardim', 'cadeira-praia', 'barraca-camping', 'saco-dormir',
+    'lanterna', 'halter', 'bicicleta-ergometrica', 'esteira-ergometrica',
+    'vara-pesca', 'anzol', 'colchao-inflavel', 'espreiguicadeira',
   ]
 
   console.log(`🔵 Magalu: buscando via Magazine Voce (magazine${storeId})...`)

@@ -39,6 +39,9 @@ const SEARCH_TERMS = [
   'cadeira escritorio', 'mesa', 'furadeira', 'kit ferramentas',
   'panela', 'liquidificador', 'ferro passar', 'batedeira',
   'pneu', 'bebe brinquedo', 'pet racao', 'livro',
+  'movel jardim', 'cadeira praia', 'barraca camping', 'saco dormir',
+  'lanterna', 'halter', 'bicicleta ergometrica', 'esteira',
+  'vara pesca', 'colchao inflavel', 'cadeira dobrável',
 ]
 
 const ITEMS_PER_PAGE = 50

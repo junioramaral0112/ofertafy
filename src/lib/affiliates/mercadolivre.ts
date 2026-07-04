@@ -35,6 +35,11 @@ const ML_SEARCH_TERMS = [
   'drone', 'camera', 'pneu', 'oleo motor', 'bebe brinquedo', 'pet racao',
   'livro', 'panela', 'liquidificador', 'batedeira', 'ferro passar', 'purificador agua',
   'guarda roupa', 'sofa', 'poltrona', 'tapete', 'cortina', 'luminaria',
+  // Novas categorias
+  'movel jardim', 'cadeira praia', 'cadeira jardim', 'barraca camping',
+  'saco dormir', 'lanterna camping', 'colchao inflavel', 'halter academia',
+  'bicicleta ergometrica', 'esteira', 'vara pesca', 'anzol',
+  'cadeira dobrável', 'guarda sol', 'espreiguicadeira',
 ]
 
 export async function fetchMercadoLivreDeals(config: AffiliateConfig) {

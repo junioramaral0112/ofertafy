@@ -208,6 +208,10 @@ function catIcon(slug: string): string {
     eletronicos: '📱', celulares: '📲', informatica: '💻', moda: '👕',
     casa: '🏠', eletrodomesticos: '🔌', esportes: '⚽', beleza: '💄',
     brinquedos: '🧸', pets: '🐾', livros: '📚', automotivo: '🚗',
+    'moda-feminina': '👗', 'moda-masculina': '👔', calcados: '👟', bolsas: '👜',
+    infantil: '👶', 'moveis-jardim': '🪑', 'cadeiras-jardim': '🪵',
+    'cadeiras-praia': '🏖️', 'esportes-fitness': '🏋️', 'camping-caca-pesca': '⛺',
+    'acessorios-camping': '🏕️',
   }
   return map[slug] || '🛍'
 }
