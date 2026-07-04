@@ -13,9 +13,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const cat = CATEGORIES.find((c) => c.slug === slug)
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ofertafy.com.br'
 
-  // Verificar se há produtos para indexar
+  // Só indexa se tiver 20+ produtos
   const data = await getOffersByCategory(slug, 1, 1).catch(() => ({ total: 0 }))
-  const noIndex = !cat || data.total === 0
+  const noIndex = !cat || data.total < 20
 
   return {
     title: `${cat?.name || 'Categoria'} — Melhores Ofertas e Promoções`,
