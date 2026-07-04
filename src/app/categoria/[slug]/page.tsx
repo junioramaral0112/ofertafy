@@ -3,6 +3,7 @@ import { getOffersByCategory } from '@/lib/fetcher'
 import OfferGrid from '@/components/OfferGrid'
 import Breadcrumbs from '@/components/Breadcrumbs'
 import { CATEGORIES } from '@/lib/utils'
+import { evaluateIndexQuality } from '@/lib/seo'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -13,15 +14,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const cat = CATEGORIES.find((c) => c.slug === slug)
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.ofertafy.com.br'
 
-  // Só indexa se tiver 20+ produtos
-  const data = await getOffersByCategory(slug, 1, 1).catch(() => ({ total: 0 }))
-  const noIndex = !cat || data.total < 10
+  // Verificar qualidade (não apenas quantidade)
+  const data = await getOffersByCategory(slug, 1, 12).catch(() => ({ offers: [], total: 0 }))
+  const quality = evaluateIndexQuality((data.offers || []).map((o: any) => ({ store: o.store, price: o.price })))
 
   return {
     title: `${cat?.name || 'Categoria'} — Melhores Ofertas e Promoções`,
     description: `As melhores ofertas de ${cat?.name || slug} no Mercado Livre, Magalu, Shopee e Amazon. Compare preços, cupons e economize!`,
     alternates: { canonical: `${siteUrl}/categoria/${slug}` },
-    robots: noIndex ? 'noindex, follow' : undefined,
+    robots: quality.indexable ? undefined : 'noindex, follow',
     openGraph: {
       title: `${cat?.name} — Ofertas e Promoções`,
       description: `Encontre as melhores ofertas de ${cat?.name || slug} com até 90% OFF.`,

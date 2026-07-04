@@ -2,6 +2,7 @@ import { getOffersByStore } from '@/lib/fetcher'
 import OfferGrid from '@/components/OfferGrid'
 import { STORES } from '@/lib/utils'
 import { getStore } from '@/lib/stores/registry'
+import { evaluateIndexQuality } from '@/lib/seo'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -19,12 +20,12 @@ function storeBg(slug: string): string {
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const store = STORES.find((s) => s.slug === slug)
-  const data = await getOffersByStore(slug, 1, 1).catch(() => ({ total: 0 }))
-  const noIndex = !store || data.total < 10
+  const data = await getOffersByStore(slug, 1, 12).catch(() => ({ offers: [], total: 0 }))
+  const quality = evaluateIndexQuality((data.offers || []).map((o: any) => ({ store: o.store, price: o.price })))
   return {
     title: `Ofertas na ${store?.name || slug} | ofertaFy`,
     description: `Encontre as melhores ofertas e promocoes na ${store?.name || slug}. Acompanhe historico de precos e economize!`,
-    robots: noIndex ? 'noindex, follow' : undefined,
+    robots: quality.indexable ? undefined : 'noindex, follow',
   }
 }
 
