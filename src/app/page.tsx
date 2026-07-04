@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { getHomeOffers, getStats } from '@/lib/fetcher'
 import OfferSection from '@/components/OfferSection'
 import SwiperCarousel from '@/components/SwiperCarousel'
+import MobileDealStack from '@/components/MobileDealStack'
 import HomeSidebar from '@/components/HomeSidebar'
 import { CATEGORIES } from '@/lib/utils'
 import Link from 'next/link'
@@ -62,7 +63,10 @@ export default async function HomePage() {
           {/* ── COLUNA CENTRAL ── */}
           <div className="flex-1 min-w-0 space-y-6">
             {/* Carrossel Swiper */}
-            <SwiperCarousel offers={carouselOffers} />
+            <MobileDealStack offers={carouselOffers} />
+            <div className="hidden md:block">
+              <SwiperCarousel offers={carouselOffers} />
+            </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
