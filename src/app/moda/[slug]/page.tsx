@@ -93,7 +93,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const config = MODA_PAGES[slug]
   if (!config) return { title: 'Moda — Ofertafy', robots: 'noindex' as const }
 
-  // Verificar se há ofertas para este slug
+  // Whitelist: apenas estas páginas são indexadas
+  const INDEXABLE = [
+    'moda-feminina', 'moda-masculina', 'vestidos', 'tenis-feminino',
+    'blusas-femininas', 'calcas-femininas', 'camisa-masculina',
+  ]
+
+  if (!INDEXABLE.includes(slug)) {
+    return {
+      title: config.title,
+      description: config.desc,
+      alternates: { canonical: `/moda/${slug}` },
+      robots: 'noindex, follow' as const,
+    }
+  }
+
+  // Verificar se há ofertas
   const count = await prisma.offer.count({
     where: {
       OR: config.keywords.map((kw) => ({ title: { contains: kw, mode: 'insensitive' as const } })),
