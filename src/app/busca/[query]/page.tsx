@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description: desc,
     alternates: { canonical: `/busca/${query}` },
-    robots: count < 20 ? 'noindex, follow' : undefined,
+    robots: count < 10 ? 'noindex, follow' : undefined,
     openGraph: {
       title,
       description: desc,

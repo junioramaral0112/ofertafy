@@ -20,7 +20,7 @@ export async function generateMetadata({ params }: Props) {
   const { slug } = await params
   const store = STORES.find((s) => s.slug === slug)
   const data = await getOffersByStore(slug, 1, 1).catch(() => ({ total: 0 }))
-  const noIndex = !store || data.total < 20
+  const noIndex = !store || data.total < 10
   return {
     title: `Ofertas na ${store?.name || slug} | ofertaFy`,
     description: `Encontre as melhores ofertas e promocoes na ${store?.name || slug}. Acompanhe historico de precos e economize!`,

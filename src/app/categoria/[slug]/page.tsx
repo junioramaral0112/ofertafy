@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   // Só indexa se tiver 20+ produtos
   const data = await getOffersByCategory(slug, 1, 1).catch(() => ({ total: 0 }))
-  const noIndex = !cat || data.total < 20
+  const noIndex = !cat || data.total < 10
 
   return {
     title: `${cat?.name || 'Categoria'} — Melhores Ofertas e Promoções`,

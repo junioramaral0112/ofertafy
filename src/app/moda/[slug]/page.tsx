@@ -120,7 +120,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: config.title,
     description: config.desc,
     alternates: { canonical: `/moda/${slug}` },
-    robots: count < 20 ? 'noindex, follow' : undefined,
+    robots: count < 10 ? 'noindex, follow' : undefined,
     openGraph: {
       title: config.title,
       description: config.desc,

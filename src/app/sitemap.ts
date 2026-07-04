@@ -1,68 +1,78 @@
 import type { MetadataRoute } from 'next'
-import { CATEGORIES, STORES, getBaseUrl } from '@/lib/utils'
+import { getBaseUrl } from '@/lib/utils'
 import { prisma } from '@/lib/prisma'
+
+const MIN_PRODUCTS = 10
+
+// Whitelist de páginas moda com alto valor SEO
+const MODA_WHITELIST = [
+  'moda-feminina', 'moda-masculina', 'vestidos', 'tenis-feminino',
+  'blusas-femininas', 'calcas-femininas', 'bolsas', 'perfumes', 'maquiagem',
+]
+
+// Lojas com afiliado ativo e 10+ produtos
+const ACTIVE_STORES = ['shopee', 'amazon', 'magalu']
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseUrl()
   const now = new Date()
 
-  // ── Rotas estáticas ──────────────────────────────
+  // ── Rotas estáticas de alto valor ─────────────────
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: now, changeFrequency: 'hourly', priority: 1 },
-    { url: `${baseUrl}/busca`, lastModified: now, changeFrequency: 'always', priority: 0.9 },
     { url: `${baseUrl}/cupons`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
-    // SEO pages
     { url: `${baseUrl}/ofertas-do-dia`, lastModified: now, changeFrequency: 'hourly', priority: 0.9 },
     { url: `${baseUrl}/melhores-ofertas`, lastModified: now, changeFrequency: 'daily', priority: 0.8 },
-    { url: `${baseUrl}/promocoes-amazon`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
-    { url: `${baseUrl}/promocoes-mercado-livre`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
-    { url: `${baseUrl}/promocoes-shopee`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
-    { url: `${baseUrl}/sobre-nos`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${baseUrl}/contato`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${baseUrl}/login`, lastModified: now, changeFrequency: 'monthly', priority: 0.1 },
-    // Moda — SEO pages
-    { url: `${baseUrl}/moda/moda-feminina`, lastModified: now, changeFrequency: 'hourly', priority: 0.9 },
-    { url: `${baseUrl}/moda/moda-masculina`, lastModified: now, changeFrequency: 'hourly', priority: 0.9 },
-    { url: `${baseUrl}/moda/vestidos`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
-    { url: `${baseUrl}/moda/calcados`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
-    { url: `${baseUrl}/moda/bolsas`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
-    { url: `${baseUrl}/moda/tenis-feminino`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
-    { url: `${baseUrl}/moda/tenis-masculino`, lastModified: now, changeFrequency: 'hourly', priority: 0.8 },
   ]
 
-  // ── Categorias ───────────────────────────────────
-  const categoryRoutes = CATEGORIES.map((cat) => ({
-    url: `${baseUrl}/categoria/${cat.slug}`,
+  // ── Moda — páginas SEO de alto valor ─────────────
+  const modaRoutes = MODA_WHITELIST.map((slug) => ({
+    url: `${baseUrl}/moda/${slug}`,
+    lastModified: now,
+    changeFrequency: 'hourly' as const,
+    priority: 0.9,
+  }))
+
+  // ── Lojas ativas (apenas com afiliado funcional) ──
+  const storeRoutes = ACTIVE_STORES.map((slug) => ({
+    url: `${baseUrl}/loja/${slug}`,
     lastModified: now,
     changeFrequency: 'hourly' as const,
     priority: 0.8,
   }))
 
-  // ── Lojas ────────────────────────────────────────
-  const storeRoutes = STORES.map((store) => ({
-    url: `${baseUrl}/loja/${store.slug}`,
-    lastModified: now,
-    changeFrequency: 'hourly' as const,
-    priority: 0.8,
-  }))
+  // ── Categorias (apenas com 10+ produtos) ──────────
+  let categoryRoutes: MetadataRoute.Sitemap = []
+  try {
+    const catCounts = await prisma.offer.groupBy({
+      by: ['categorySlug'],
+      _count: true,
+      where: { price: { gt: 0 } },
+    })
+    const validSlugs = catCounts.filter((c) => c._count >= MIN_PRODUCTS).map((c) => c.categorySlug)
+    categoryRoutes = validSlugs.map((slug) => ({
+      url: `${baseUrl}/categoria/${slug}`,
+      lastModified: now,
+      changeFrequency: 'hourly' as const,
+      priority: 0.8,
+    }))
+  } catch { /* DB offline */ }
 
-  // ── Produtos (top 50 por score — limite rígido para build rápido) ──
-  // ⚠️  5000 produtos causava Timeout/OOM na Vercel (plano Hobby).
-  //      Mantemos 50 — o restante é indexado via link discovery.
+  // ── Produtos (top 100 por score) ──────────────────
   let productRoutes: MetadataRoute.Sitemap = []
   try {
     const topOffers = await prisma.offer.findMany({
       select: { id: true, updatedAt: true },
       orderBy: { scorePromocional: 'desc' },
-      take: 50,
+      take: 100,
     })
     productRoutes = topOffers.map((o) => ({
-      url: `${baseUrl}/produto/${o.id}`,
+      url: `${baseUrl}/p/${o.id}`,
       lastModified: o.updatedAt,
       changeFrequency: 'daily' as const,
       priority: 0.6,
     }))
-  } catch { /* DB offline during build */ }
+  } catch { /* DB offline */ }
 
-  return [...staticRoutes, ...categoryRoutes, ...storeRoutes, ...productRoutes]
+  return [...staticRoutes, ...modaRoutes, ...storeRoutes, ...categoryRoutes, ...productRoutes]
 }
