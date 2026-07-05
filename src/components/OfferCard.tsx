@@ -3,7 +3,7 @@ import { formatPrice, generateProductSlug } from '@/lib/utils'
 import { calculateIndiceOfertafy, isVerifiedOffer } from '@/lib/ia'
 import type { OfferData } from '@/types'
 
-export default function OfferCard({ offer, compact }: { offer: OfferData; compact?: boolean }) {
+export default function OfferCard({ offer, compact, index }: { offer: OfferData; compact?: boolean; index?: number }) {
   const indice = calculateIndiceOfertafy(offer)
   const verified = isVerifiedOffer(offer)
   const slug = generateProductSlug(offer.title, offer.id)
