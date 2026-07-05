@@ -45,8 +45,8 @@ function MiniList({ title, offers }: { title: string; offers: OfferData[] }) {
     <div className="bg-white rounded-xl border border-slate-100 p-3">
       <h3 className="text-xs font-bold text-slate-700 mb-2">{title}</h3>
       <div className="space-y-2">
-        {offers.map((offer) => (
-          <Link key={offer.id} href={`/produto/${offer.id}`}
+        {offers.map((offer, i) => (
+          <Link key={`${offer.id}-${i}`} href={`/produto/${offer.id}`}
             className="flex items-center gap-2 group hover:bg-slate-50 rounded-lg p-1 -mx-1 transition-colors">
             <img src={offer.imageUrl} alt={offer.title}
               className="w-10 h-10 rounded-lg object-cover shrink-0" loading="lazy" />
