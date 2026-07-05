@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { getHomeOffers, getStats } from '@/lib/fetcher'
 import OfferSection from '@/components/OfferSection'
 import SwiperCarousel from '@/components/SwiperCarousel'
-import MobileDealStack from '@/components/MobileDealStack'
+import MobileAppLayoutV2 from '@/components/MobileAppLayoutV2'
 import HomeSidebar from '@/components/HomeSidebar'
 import { CATEGORIES } from '@/lib/utils'
 import Link from 'next/link'
@@ -63,21 +63,23 @@ export default async function HomePage() {
           {/* ── COLUNA CENTRAL ── */}
           <div className="flex-1 min-w-0 space-y-6">
             {/* Carrossel Swiper */}
-            <MobileDealStack offers={carouselOffers} />
-            <div className="hidden md:block">
+            {/* MOBILE V2: layout completo */}
+            <MobileAppLayoutV2 offers={carouselOffers} stats={stats} />
+
+            {/* DESKTOP: layout original preservado */}
+            <div className="hidden md:block space-y-6">
               <SwiperCarousel offers={carouselOffers} />
-            </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatCard icon="🏷️" value={stats.totalOffers.toLocaleString()} label="Ofertas ativas" />
-              <StatCard icon="🏪" value={String(stats.stores.length)} label="Lojas parceiras" />
-              <StatCard icon="💰" value={stats.totalClicks.toLocaleString()} label="Economia gerada" />
-              <StatCard icon="🔄" value="5 min" label="Atualizado há" />
-            </div>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-4 gap-3">
+                <StatCard icon="🏷️" value={stats.totalOffers.toLocaleString()} label="Ofertas ativas" />
+                <StatCard icon="🏪" value={String(stats.stores.length)} label="Lojas parceiras" />
+                <StatCard icon="💰" value={stats.totalClicks.toLocaleString()} label="Economia gerada" />
+                <StatCard icon="🔄" value="5 min" label="Atualizado há" />
+              </div>
 
-            {/* Ofertas do Dia — Grid 4 colunas */}
-            {ofertasDoDia.length > 0 && (
+              {/* Ofertas do Dia — Grid 4 colunas */}
+              {ofertasDoDia.length > 0 && (
               <OfferSection
                 icon="🔥"
                 title="Ofertas do Dia"
@@ -89,6 +91,7 @@ export default async function HomePage() {
 
             {/* Por loja — scroll horizontal */}
             <PorLoja all={all} />
+            </div>{/* fecha hidden md:block desktop wrapper */}
           </div>
 
           {/* ── COLUNA DIREITA ── */}
