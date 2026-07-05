@@ -54,76 +54,49 @@ async function saveOffersBulk(allDeals: any[]): Promise<{ added: number; updated
 
   console.log(`\n💾 Salvando ${validDeals.length} ofertas (bulk)...`)
 
-  // ── 1. Carregar existentes em 1 query ──────────────────
-  const keys = validDeals.map((d) => d.sourceId)
-  const stores = [...new Set(validDeals.map((d) => d.store))]
-
-  let existingRows: Array<{ id: string; sourceId: string | null; store: string; price: number; scorePromocional: number }> = []
-  try {
-    existingRows = await prisma.offer.findMany({
-      where: { sourceId: { in: keys }, store: { in: stores } },
-      select: { id: true, sourceId: true, store: true, price: true, scorePromocional: true },
-    })
-  } catch (e: any) {
-    console.error(`   ❌ Erro ao carregar existentes: ${e.message?.slice(0, 100)}`)
-    // fallback: continua sem mapa (tudo será create)
-  }
-
-  // Map: `${store}::${sourceId}` → { id, price, scorePromocional }
-  const existMap = new Map<string, typeof existingRows[0]>()
-  for (const row of existingRows) {
-    if (row.sourceId) existMap.set(offerKey(row.sourceId, row.store), row)
-  }
-  console.log(`   📊 ${existingRows.length} já existem no banco | ${validDeals.length - existingRows.length} novos`)
-
-  // ── 2. Separar novos vs existentes ─────────────────────
-  const novos: any[] = []
-  const paraAtualizar: Array<{ id: string; deal: any; catResult: any; oldPrice: number; oldScore: number }> = []
-
-  for (const deal of validDeals) {
-    const key = offerKey(deal.sourceId, deal.store)
-    const existing = existMap.get(key)
-    const catResult = classifyProduct(deal.title, deal.price, deal.category)
-
-    if (existing) {
-      if (existing.price !== deal.price) {
-        paraAtualizar.push({
-          id: existing.id,
-          deal,
-          catResult,
-          oldPrice: existing.price,
-          oldScore: existing.scorePromocional,
-        })
-      }
-    } else {
-      novos.push({
-        ...deal,
-        category: catResult.category,
-        categorySlug: catResult.categorySlug,
-        scorePromocional: deal.scorePromocional ?? 0,
-      })
-    }
-  }
-
+  // ── UPSERT: imune a duplicados (unique constraint sourceId+store) ──
   let added = 0, updated = 0, errors = 0
 
-  // ── 3. Criar um por um (mais confiável que createMany) ──
-  for (let i = 0; i < novos.length; i++) {
+  for (let i = 0; i < validDeals.length; i++) {
+    const deal = validDeals[i]
+    const catResult = classifyProduct(deal.title, deal.price, deal.category)
+
     try {
-      await prisma.offer.create({ data: novos[i] })
-      added++
-    } catch (e: any) {
-      // Tentar sem os campos problemáticos
-      try {
-        const { scorePromocional, ...safe } = novos[i]
-        await prisma.offer.create({ data: safe })
+      const existing = await prisma.offer.findFirst({
+        where: { sourceId: deal.sourceId, store: deal.store },
+        select: { id: true, price: true },
+      })
+
+      if (existing) {
+        if (existing.price !== deal.price) {
+          await prisma.priceHistory.create({ data: { offerId: existing.id, price: deal.price } })
+        }
+        await prisma.offer.update({
+          where: { id: existing.id },
+          data: {
+            price: deal.price, originalPrice: deal.originalPrice, discountPct: deal.discountPct,
+            imageUrl: deal.imageUrl, url: deal.url, freeShipping: deal.freeShipping,
+            installment: deal.installment, updatedAt: new Date(),
+            category: catResult.category, categorySlug: catResult.categorySlug,
+            scorePromocional: deal.scorePromocional ?? 0,
+          },
+        })
+        updated++
+      } else {
+        await prisma.offer.create({
+          data: {
+            ...deal,
+            category: catResult.category, categorySlug: catResult.categorySlug,
+            scorePromocional: deal.scorePromocional ?? 0,
+          },
+        })
         added++
-      } catch {
-        errors++
       }
+    } catch (e: any) {
+      errors++
     }
-    if (i > 0 && i % 50 === 0) {
-      process.stdout.write(`   ${i}/${novos.length}\r`)
+    if (i > 0 && i % 100 === 0) {
+      process.stdout.write(`   ${i}/${validDeals.length} (${added} novas, ${updated} att)\r`)
       await sleep(50)
     }
   }

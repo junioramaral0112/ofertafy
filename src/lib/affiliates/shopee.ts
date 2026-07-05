@@ -275,7 +275,12 @@ function buildOffer(node: ProductOfferV2Node): RawOffer | null {
     const affiliateUrl =
       node.offerLink ||
       node.productLink ||
-      `https://shopee.com.br/product/${shopId}/${itemId}`
+      `https://shopee.com.br/product/${shopId}/${itemId}?affiliate_id=${config.shopeeAppId || '18355150568'}`
+
+    // 🔒 Rejeitar ofertas sem affiliate_id
+    if (affiliateUrl && !affiliateUrl.includes('affiliate_id=') && !affiliateUrl.includes('s.shopee.com.br')) {
+      return null
+    }
 
     // ── Parcelamento ──────────────────────────────────
     const installment =
