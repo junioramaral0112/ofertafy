@@ -1,11 +1,14 @@
 'use client'
 
+'use client'
+
+import { useState, useEffect } from 'react'
 import type { OfferData } from '@/types'
 import { formatPrice, getBridgeUrl } from '@/lib/utils'
 import { calculateIndiceOfertafy } from '@/lib/ia'
 
 function fmtNum(n: number): string {
-  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return new Intl.NumberFormat('pt-BR').format(n)
 }
 
 interface Props {
@@ -23,6 +26,9 @@ const QUICK_LINKS = [
 ]
 
 export default function MobileAppLayoutV2({ offers, stats }: Props) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   if (!offers || offers.length === 0) return null
 
   const sorted = [...offers].sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0))
@@ -34,10 +40,10 @@ export default function MobileAppLayoutV2({ offers, stats }: Props) {
       {/* ── STATS BAR ── */}
       <div className="bg-white border-b border-slate-100 px-4 py-2">
         <div className="flex justify-between text-center">
-          <div><p className="text-sm font-extrabold text-slate-900" suppressHydrationWarning>{fmtNum(stats.totalOffers)}</p><p className="text-[9px] text-slate-400">Ofertas</p></div>
-          <div><p className="text-sm font-extrabold text-slate-900" suppressHydrationWarning>{stats.stores.length}</p><p className="text-[9px] text-slate-400">Lojas</p></div>
-          <div><p className="text-sm font-extrabold text-slate-900" suppressHydrationWarning>{fmtNum(stats.totalClicks)}</p><p className="text-[9px] text-slate-400">Economias</p></div>
-          <div><p className="text-sm font-extrabold text-emerald-600">12.144</p><p className="text-[9px] text-slate-400">Produtos</p></div>
+          <div><p className="text-sm font-extrabold text-slate-900">{mounted ? fmtNum(stats.totalOffers) : '—'}</p><p className="text-[9px] text-slate-400">Ofertas</p></div>
+          <div><p className="text-sm font-extrabold text-slate-900">{mounted ? stats.stores.length : '—'}</p><p className="text-[9px] text-slate-400">Lojas</p></div>
+          <div><p className="text-sm font-extrabold text-slate-900">{mounted ? fmtNum(stats.totalClicks) : '—'}</p><p className="text-[9px] text-slate-400">Economias</p></div>
+          <div><p className="text-sm font-extrabold text-emerald-600">{mounted ? '12.144' : '—'}</p><p className="text-[9px] text-slate-400">Produtos</p></div>
         </div>
       </div>
 

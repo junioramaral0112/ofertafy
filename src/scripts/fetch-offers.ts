@@ -174,8 +174,15 @@ async function main() {
 
   console.log(`🟡 ML: ${mlDeals.length} | 🔵 Magalu: ${magaluDeals.length} | 🟠 Amazon: ${amazonDeals.length} | 🔴 Shopee: ${shopeeDeals.length} | 🎵 TikTok: ${tiktokDeals.length}`)
 
-  // ── Fase 2: Salvamento Bulk ───────────────────────────
-  const allDeals = [...mlDeals, ...magaluDeals, ...shopeeDeals, ...amazonDeals, ...tiktokDeals]
+  // ── Fase 2: Dedup + Salvamento Bulk ──────────────────
+  const allRaw = [...mlDeals, ...magaluDeals, ...shopeeDeals, ...amazonDeals, ...tiktokDeals]
+  const seen = new Set<string>()
+  const allDeals = allRaw.filter((d: any) => {
+    const key = `${d.sourceId || ''}-${d.store}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
   const { added, updated, errors } = await saveOffersBulk(allDeals)
 
   console.log(`\n📊 Final: ${added} novas, ${updated} atualizadas, ${errors} erros`)
