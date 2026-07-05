@@ -4,7 +4,7 @@ import OfferSection from '@/components/OfferSection'
 import SwiperCarousel from '@/components/SwiperCarousel'
 import MobileAppLayoutV2 from '@/components/MobileAppLayoutV2'
 import HomeSidebar from '@/components/HomeSidebar'
-import { CATEGORIES, deduplicateOffers } from '@/lib/utils'
+import { CATEGORIES, cleanOffersPipeline } from '@/lib/utils'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -29,12 +29,14 @@ export default async function HomePage() {
 
   const all = [...(data.flashDeals || []), ...(data.recentOffers || []), ...(data.topOffers || [])]
 
-  const ofertasDoDia = (data.recentOffers || []).slice(0, 8)
-  const maioresQuedas = deduplicateOffers([...all].sort((a, b) => b.discountPct - a.discountPct).slice(0, 12))
-  const maisClicados = deduplicateOffers([...all].sort((a, b) => b.clicks - a.clicks).slice(0, 12))
-  const emTendencia = deduplicateOffers([...all].sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0)).slice(0, 12))
+  // 🎯 PIPELINE ÚNICO: limpa, dedup, ordena, gera stableId
+  const pipeline = cleanOffersPipeline(all)
 
-  const carouselOffers = deduplicateOffers((data.recentOffers || data.flashDeals || data.topOffers || []).slice(0, 15))
+  const ofertasDoDia = pipeline.slice(0, 8)
+  const carouselOffers = pipeline.slice(0, 15)
+  const maioresQuedas = pipeline.filter((o: any) => o.discountPct >= 15).slice(0, 12)
+  const maisClicados = [...pipeline].sort((a: any, b: any) => (b.clicks || 0) - (a.clicks || 0)).slice(0, 12)
+  const emTendencia = maioresQuedas
 
   return (
     <div className="bg-slate-50 min-h-screen">

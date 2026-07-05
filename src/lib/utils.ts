@@ -118,10 +118,66 @@ export function matchShortId(shortId: string, allIds: string[]): string | null {
   return allIds.find((id) => id.endsWith(shortId)) || null
 }
 
+// ═══════════════════════════════════════════════════════════
+// DATA ENGINE — Pipeline determinístico de ofertas
+// ═══════════════════════════════════════════════════════════
+
 /**
- * 🔒 Deduplica array de ofertas por chave única (sourceId + store).
- * Ordem preservada — o primeiro de cada chave vence.
+ * Gera hash simples para stableId.
+ * Determinístico: mesmo input → mesmo output (SSR & client).
  */
+function simpleHash(str: string): string {
+  let h = 0
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i)
+    h |= 0
+  }
+  return Math.abs(h).toString(36)
+}
+
+/**
+ * 🔒 PIPELINE GLOBAL DE OFERTAS
+ *
+ * Processa um array bruto de ofertas e retorna um dataset:
+ *   - 100% deduplicado (por store + sourceId + url)
+ *   - Com stableId determinístico para React keys
+ *   - Ordenado deterministicamente por discountPct desc
+ *   - Imutável e estável para SSR + client
+ *
+ * Uso: const clean = cleanOffersPipeline(rawOffers)
+ */
+export function cleanOffersPipeline<T extends {
+  id?: string; sourceId?: string | null; store?: string; url?: string
+  title?: string; discountPct?: number; price?: number
+}>(offers: T[]): Array<T & { stableId: string }> {
+  if (!offers || !Array.isArray(offers)) return []
+
+  // Fase 1: Remover nulos/inválidos
+  const valid = offers.filter((o) => o && (o.sourceId || o.id) && o.store)
+
+  // Fase 2: Dedup por chave composta (store + sourceId + url)
+  const seen = new Set<string>()
+  const deduped = valid.filter((o) => {
+    const key = `${o.store || ''}|${o.sourceId || o.id || ''}|${(o.url || '').slice(0, 80)}|${(o.title || '').slice(0, 40)}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  // Fase 3: Ordenação determinística (discountPct desc, price asc)
+  const sorted = [...deduped].sort((a, b) => {
+    const discDiff = (b.discountPct || 0) - (a.discountPct || 0)
+    if (discDiff !== 0) return discDiff
+    return (a.price || 0) - (b.price || 0)
+  })
+
+  // Fase 4: Atribuir stableId determinístico
+  return sorted.map((offer, i) => ({
+    ...offer,
+    stableId: `${offer.store || 'x'}-${simpleHash((offer.sourceId || offer.id || '') + (offer.url || ''))}-${i}`,
+  }))
+}
+
 export function deduplicateOffers<T extends { sourceId?: string | null; store: string }>(offers: T[]): T[] {
   const seen = new Set<string>()
   return offers.filter((o) => {
@@ -130,13 +186,6 @@ export function deduplicateOffers<T extends { sourceId?: string | null; store: s
     seen.add(key)
     return true
   })
-}
-
-/**
- * Gera key única para React maps — NUNCA duplicada.
- */
-export function uniqueKey(prefix: string, index: number, store?: string): string {
-  return `${prefix}-${store || 'item'}-${index}`
 }
 
 export function formatPrice(value: number): string {
