@@ -102,7 +102,7 @@ export default function MobileAppLayoutV2({ offers, stats }: Props) {
         </h3>
         <div className="space-y-2.5">
           {feed.map((offer) => (
-            <FeedCard key={offer.id} offer={offer} />
+            <FeedCard key={`${offer.sourceId || offer.id}-${offer.store}`} offer={offer} />
           ))}
         </div>
       </div>

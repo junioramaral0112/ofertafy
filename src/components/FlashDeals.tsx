@@ -51,7 +51,7 @@ export default function FlashDeals({ offers }: { offers: OfferData[] }) {
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {offers.map((offer) => (
-          <div key={offer.id} className="min-w-[220px] max-w-[220px] snap-start">
+          <div key={`${offer.sourceId || offer.id}-${offer.store}`} className="min-w-[220px] max-w-[220px] snap-start">
             <OfferCard offer={offer} />
           </div>
         ))}
