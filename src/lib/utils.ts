@@ -169,10 +169,10 @@ export function cleanOffersPipeline<T extends {
   // Fase 1: Remover nulos/inválidos
   const valid = offers.filter((o) => o && (o.sourceId || o.id) && o.store)
 
-  // Fase 2: Dedup por chave composta (store + sourceId + url)
+  // Fase 2: Dedup por sourceId + store (identidade real do produto)
   const seen = new Set<string>()
   const deduped = valid.filter((o) => {
-    const key = `${o.store || ''}|${o.sourceId || o.id || ''}|${(o.url || '').slice(0, 80)}|${(o.title || '').slice(0, 40)}`
+    const key = `${o.sourceId || o.id || ''}|${o.store || ''}`
     if (seen.has(key)) return false
     seen.add(key)
     return true
@@ -202,8 +202,8 @@ export function deduplicateOffers<T extends { sourceId?: string | null; store: s
   })
 }
 
-export function getOfferKey(offer: { stableId?: string; sourceId?: string | null; id?: string; store?: string }): string {
-  return offer.stableId || `${offer.sourceId || offer.id || 'x'}-${offer.store || 'x'}`
+export function getOfferKey(offer: { sourceId?: string | null; id?: string; store?: string }): string {
+  return `${offer.sourceId || offer.id || 'x'}-${offer.store || 'x'}`
 }
 
 export function formatPrice(value: number): string {
