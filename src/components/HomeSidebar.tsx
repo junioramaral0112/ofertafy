@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { OfferData } from '@/types'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, getOfferKey } from '@/lib/utils'
 
 interface HomeSidebarProps {
   trendingOffers: OfferData[]
@@ -46,7 +46,7 @@ function MiniList({ title, offers }: { title: string; offers: OfferData[] }) {
       <h3 className="text-xs font-bold text-slate-700 mb-2">{title}</h3>
       <div className="space-y-2">
         {offers.map((offer) => (
-          <Link key={`${offer.sourceId || offer.id}-${offer.store}`} href={`/produto/${offer.id}`}
+          <Link key={getOfferKey(offer)} href={`/produto/${offer.id}`}
             className="flex items-center gap-2 group hover:bg-slate-50 rounded-lg p-1 -mx-1 transition-colors">
             <img src={offer.imageUrl} alt={offer.title}
               className="w-10 h-10 rounded-lg object-cover shrink-0" loading="lazy" />

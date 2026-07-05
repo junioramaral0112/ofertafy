@@ -1,7 +1,7 @@
 'use client'
 
 import type { OfferData } from '@/types'
-import { formatPrice, getBridgeUrl } from '@/lib/utils'
+import { formatPrice, getBridgeUrl, getOfferKey } from '@/lib/utils'
 import { calculateIndiceOfertafy } from '@/lib/ia'
 
 interface Props {
@@ -41,7 +41,7 @@ export default function MobileDealStack({ offers }: Props) {
         {/* Coluna esquerda: mini-cards */}
         <div className="flex flex-col gap-2">
           {miniCards.map((offer) => (
-            <MiniCard key={`${offer.sourceId || offer.id}-${offer.store}`} offer={offer} />
+            <MiniCard key={getOfferKey(offer)} offer={offer} />
           ))}
         </div>
 
@@ -150,7 +150,7 @@ function HorizontalScroll({ title, offers }: { title: string; offers: OfferData[
       <h3 className="text-white text-xs font-bold mb-2 flex items-center gap-1.5">{title}</h3>
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
         {offers.map((offer) => (
-          <a key={`${offer.sourceId || offer.id}-${offer.store}`}
+          <a key={getOfferKey(offer)}
             href={getBridgeUrl(offer.url, offer.storeLabel)}
             className="bg-white/10 backdrop-blur rounded-xl p-2 min-w-[130px] flex-shrink-0 hover:bg-white/15 transition-colors active:scale-[0.98]"
           >

@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect } from 'react'
 import OfferCard from './OfferCard'
+import { getOfferKey } from '@/lib/utils'
 import type { OfferData } from '@/types'
 
 export default function FlashDeals({ offers }: { offers: OfferData[] }) {
@@ -51,7 +52,7 @@ export default function FlashDeals({ offers }: { offers: OfferData[] }) {
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {offers.map((offer) => (
-          <div key={`${offer.sourceId || offer.id}-${offer.store}`} className="min-w-[220px] max-w-[220px] snap-start">
+          <div key={getOfferKey(offer)} className="min-w-[220px] max-w-[220px] snap-start">
             <OfferCard offer={offer} />
           </div>
         ))}

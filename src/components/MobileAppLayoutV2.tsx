@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react'
 import type { OfferData } from '@/types'
-import { formatPrice, getBridgeUrl } from '@/lib/utils'
+import { formatPrice, getBridgeUrl, getOfferKey } from '@/lib/utils'
 import { calculateIndiceOfertafy } from '@/lib/ia'
 
 function fmtNum(n: number): string {
@@ -102,7 +102,7 @@ export default function MobileAppLayoutV2({ offers, stats }: Props) {
         </h3>
         <div className="space-y-2.5">
           {feed.map((offer) => (
-            <FeedCard key={`${offer.sourceId || offer.id}-${offer.store}`} offer={offer} />
+            <FeedCard key={getOfferKey(offer)} offer={offer} />
           ))}
         </div>
       </div>

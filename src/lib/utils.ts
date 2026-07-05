@@ -202,6 +202,10 @@ export function deduplicateOffers<T extends { sourceId?: string | null; store: s
   })
 }
 
+export function getOfferKey(offer: { stableId?: string; sourceId?: string | null; id?: string; store?: string }): string {
+  return offer.stableId || `${offer.sourceId || offer.id || 'x'}-${offer.store || 'x'}`
+}
+
 export function formatPrice(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',

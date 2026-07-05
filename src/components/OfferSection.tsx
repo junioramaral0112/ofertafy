@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import OfferCard from './OfferCard'
+import { getOfferKey } from '@/lib/utils'
 import type { OfferData } from '@/types'
 
 type SectionLayout = 'grid' | 'scroll' | 'list'
@@ -58,7 +59,7 @@ export default function OfferSection({
       {layout === 'scroll' ? (
         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory -mx-1 px-1">
           {offers.slice(0, 12).map((offer) => (
-            <div key={`${offer.sourceId || offer.id}-${offer.store}`} className="min-w-[220px] max-w-[260px] snap-start shrink-0">
+            <div key={getOfferKey(offer)} className="min-w-[220px] max-w-[260px] snap-start shrink-0">
               <OfferCard offer={offer} compact />
             </div>
           ))}
@@ -67,7 +68,7 @@ export default function OfferSection({
         <div className="space-y-2">
           {offers.slice(0, 10).map((offer) => (
             <Link
-              key={`${offer.sourceId || offer.id}-${offer.store}`}
+              key={getOfferKey(offer)}
               href={`/produto/${offer.id}`}
               className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors group"
             >
@@ -98,7 +99,7 @@ export default function OfferSection({
         /* grid — padrão */
         <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 md:gap-3">
           {offers.slice(0, 15).map((offer) => (
-            <OfferCard key={`${offer.sourceId || offer.id}-${offer.store}`} offer={offer} />
+            <OfferCard key={getOfferKey(offer)} offer={offer} />
           ))}
         </div>
       )}
