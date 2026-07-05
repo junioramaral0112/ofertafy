@@ -118,6 +118,27 @@ export function matchShortId(shortId: string, allIds: string[]): string | null {
   return allIds.find((id) => id.endsWith(shortId)) || null
 }
 
+/**
+ * 🔒 Deduplica array de ofertas por chave única (sourceId + store).
+ * Ordem preservada — o primeiro de cada chave vence.
+ */
+export function deduplicateOffers<T extends { sourceId?: string | null; store: string }>(offers: T[]): T[] {
+  const seen = new Set<string>()
+  return offers.filter((o) => {
+    const key = `${o.sourceId || ''}-${o.store}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+/**
+ * Gera key única para React maps — NUNCA duplicada.
+ */
+export function uniqueKey(prefix: string, index: number, store?: string): string {
+  return `${prefix}-${store || 'item'}-${index}`
+}
+
 export function formatPrice(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',

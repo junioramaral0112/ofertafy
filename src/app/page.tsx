@@ -4,7 +4,7 @@ import OfferSection from '@/components/OfferSection'
 import SwiperCarousel from '@/components/SwiperCarousel'
 import MobileAppLayoutV2 from '@/components/MobileAppLayoutV2'
 import HomeSidebar from '@/components/HomeSidebar'
-import { CATEGORIES } from '@/lib/utils'
+import { CATEGORIES, deduplicateOffers } from '@/lib/utils'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
@@ -30,11 +30,11 @@ export default async function HomePage() {
   const all = [...(data.flashDeals || []), ...(data.recentOffers || []), ...(data.topOffers || [])]
 
   const ofertasDoDia = (data.recentOffers || []).slice(0, 8)
-  const maioresQuedas = [...all].sort((a, b) => b.discountPct - a.discountPct).slice(0, 8)
-  const maisClicados = [...all].sort((a, b) => b.clicks - a.clicks).slice(0, 8)
-  const emTendencia = [...all].sort((a, b) => (b.scorePromocional || 0) - (a.scorePromocional || 0)).slice(0, 8)
+  const maioresQuedas = deduplicateOffers([...all].sort((a, b) => b.discountPct - a.discountPct).slice(0, 12))
+  const maisClicados = deduplicateOffers([...all].sort((a, b) => b.clicks - a.clicks).slice(0, 12))
+  const emTendencia = deduplicateOffers([...all].sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0)).slice(0, 12))
 
-  const carouselOffers = (data.recentOffers || data.flashDeals || data.topOffers || []).slice(0, 5)
+  const carouselOffers = deduplicateOffers((data.recentOffers || data.flashDeals || data.topOffers || []).slice(0, 15))
 
   return (
     <div className="bg-slate-50 min-h-screen">
