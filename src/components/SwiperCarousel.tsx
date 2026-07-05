@@ -154,7 +154,6 @@ function storeBadge(store: string): string {
     magalu: 'bg-[#0086FF] text-white',
     shopee: 'bg-[#EE4D2D] text-white',
     amazon: 'bg-[#FF9900] text-slate-900',
-    shein: 'bg-black text-white',
   }
   return map[store] || 'bg-white text-slate-900'
 }

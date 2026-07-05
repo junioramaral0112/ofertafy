@@ -14,8 +14,6 @@ import { invalidateCache } from './cache'
 import { fetchMercadoLivreDeals } from './affiliates/mercadolivre'
 import { fetchMagaluDeals } from './affiliates/magalu'
 import { fetchShopeeDeals } from './affiliates/shopee'
-import { fetchTikTokDeals } from './affiliates/tiktok'
-import { fetchSheinDeals } from './affiliates/shein'
 import type { FetchResult } from '@/types'
 
 function getAffiliateConfig() {
@@ -26,10 +24,6 @@ function getAffiliateConfig() {
     // Shopee API oficial
     shopeeAppId: process.env.SHOPEE_APP_ID || '',
     shopeeSecret: process.env.SHOPEE_SECRET || '',
-
-    // TikTok Shop
-    tiktokAffiliateId: process.env.TIKTOK_AFFILIATE_ID || '',
-    tiktokAccessToken: process.env.TIKTOK_ACCESS_TOKEN || '',
 
     // Amazon
     amazonAssociateTag: process.env.AMAZON_ASSOCIATE_TAG || '',
@@ -43,13 +37,10 @@ export async function fetchAllDeals(): Promise<FetchResult[]> {
   const results: FetchResult[] = []
 
   // Lojas leves (sem Puppeteer)
-  const [mlDeals, magaluDeals, shopeeDeals, tiktokDeals, sheinDeals] = await Promise.all([
+  const [mlDeals, magaluDeals, shopeeDeals] = await Promise.all([
     fetchMercadoLivreDeals(config).catch((e) => { console.error('ML:', e); return [] }),
     fetchMagaluDeals(config).catch((e) => { console.error('Magalu:', e); return [] }),
     fetchShopeeDeals(config).catch((e) => { console.error('Shopee:', e); return [] }),
-    fetchTikTokDeals(config).catch((e) => { console.error('TikTok:', e); return [] }),
-    // SHEIN leve (fetch-based) — fallback rápido
-    fetchSheinDeals(config).catch((e) => { console.error('SHEIN:', e); return [] }),
   ])
 
   // Amazon — Puppeteer (import dinâmico ISOLADO)
@@ -121,15 +112,13 @@ export async function fetchAllDeals(): Promise<FetchResult[]> {
     return { store: storeLabel, offersFound: deals.length, offersAdded: added, offersUpdated: updated, errors: errors.slice(0, 5) }
   }
 
-  const [mlResult, magaluResult, shopeeResult, tiktokResult, sheinResult] = await Promise.all([
+  const [mlResult, magaluResult, shopeeResult] = await Promise.all([
     processStore(mlDeals, 'Mercado Livre'),
     processStore(magaluDeals, 'Magalu'),
     processStore(shopeeDeals, 'Shopee'),
-    processStore(tiktokDeals, 'TikTok Shop'),
-    processStore(sheinDeals, 'SHEIN'),
   ])
 
-  results.push(mlResult, magaluResult, shopeeResult, tiktokResult, sheinResult)
+  results.push(mlResult, magaluResult, shopeeResult)
 
   // Amazon — processa separadamente
   if (amazonDeals.length > 0) {

@@ -122,7 +122,6 @@ function PorLoja({ all }: { all: any[] }) {
     { key: 'mercadolivre', icon: '🟡', name: 'Mercado Livre', slug: 'mercadolivre' },
     { key: 'shopee', icon: '🔴', name: 'Shopee', slug: 'shopee' },
     { key: 'magalu', icon: '🔵', name: 'Magalu', slug: 'magalu' },
-    { key: 'shein', icon: '👗', name: 'SHEIN', slug: 'shein' },
   ]
 
   return (

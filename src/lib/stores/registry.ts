@@ -81,42 +81,6 @@ export const STORE_REGISTRY: Record<string, StoreConfig> = {
     },
   },
 
-  // ─── TIKTOK SHOP ─────────────────────────────
-  tiktok: {
-    slug: 'tiktok',
-    name: 'TikTok Shop',
-    domain: 'tiktok.com',
-    color: '#000000',
-    textColor: '#ffffff',
-    icon: '🎵',
-    badgeClass: 'bg-black text-white',
-    active: true,
-    reputation: 50,
-    affiliate: {
-      type: 'query_param',
-      paramName: 'u_code',
-      paramValue: process.env.TIKTOK_AFFILIATE_ID || '',
-    },
-  },
-
-  // ─── SHEIN ────────────────────────────────────
-  shein: {
-    slug: 'shein',
-    name: 'SHEIN',
-    domain: 'shein.com.br',
-    color: '#000000',
-    textColor: '#ffffff',
-    icon: '👗',
-    badgeClass: 'bg-black text-white',
-    active: true,
-    reputation: 62,
-    affiliate: {
-      type: 'shortlink',
-      // SHEIN tracking via OneLink — a URL do produto permanece limpa.
-      // O afiliado é rastreado via cookie de origem (tráfego do Ofertafy).
-      // Quando OneLink estiver disponível, usar customUrlBuilder.
-    },
-  },
 }
 
 /** Lista plana de lojas ativas */

@@ -68,6 +68,20 @@ export function getBridgeUrl(
   storeName: string,
   absolute?: boolean,
 ): string {
+  // 🔒 Validação: URL deve ter tracking de afiliado
+  const storeSlug = storeName.toLowerCase().replace(/\s+/g, '')
+  const REQUIRED_PARAMS: Record<string, string> = {
+    mercadolivre: 'matt_tool=',
+    magalu: '', // Magalu é path-based
+    amazon: 'tag=',
+    shopee: 'affiliate_id=',
+  }
+
+  const required = REQUIRED_PARAMS[storeSlug]
+  if (required && !rawUrl.includes(required)) {
+    console.warn(`⚠️ Link SEM afiliado: ${storeName} — ${rawUrl.slice(0, 80)}`)
+  }
+
   const path = `/ir?url=${encodeURIComponent(rawUrl)}&loja=${encodeURIComponent(storeName)}`
   return absolute ? `${getBaseUrl()}${path}` : path
 }
