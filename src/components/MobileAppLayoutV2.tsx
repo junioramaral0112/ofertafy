@@ -34,9 +34,9 @@ export default function MobileAppLayoutV2({ offers, stats }: Props) {
       {/* ── STATS BAR ── */}
       <div className="bg-white border-b border-slate-100 px-4 py-2">
         <div className="flex justify-between text-center">
-          <div><p className="text-sm font-extrabold text-slate-900">{fmtNum(stats.totalOffers)}</p><p className="text-[9px] text-slate-400">Ofertas</p></div>
-          <div><p className="text-sm font-extrabold text-slate-900">{stats.stores.length}</p><p className="text-[9px] text-slate-400">Lojas</p></div>
-          <div><p className="text-sm font-extrabold text-slate-900">{fmtNum(stats.totalClicks)}</p><p className="text-[9px] text-slate-400">Economias</p></div>
+          <div><p className="text-sm font-extrabold text-slate-900" suppressHydrationWarning>{fmtNum(stats.totalOffers)}</p><p className="text-[9px] text-slate-400">Ofertas</p></div>
+          <div><p className="text-sm font-extrabold text-slate-900" suppressHydrationWarning>{stats.stores.length}</p><p className="text-[9px] text-slate-400">Lojas</p></div>
+          <div><p className="text-sm font-extrabold text-slate-900" suppressHydrationWarning>{fmtNum(stats.totalClicks)}</p><p className="text-[9px] text-slate-400">Economias</p></div>
           <div><p className="text-sm font-extrabold text-emerald-600">12.144</p><p className="text-[9px] text-slate-400">Produtos</p></div>
         </div>
       </div>
