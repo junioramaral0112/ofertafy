@@ -40,7 +40,6 @@ model Offer {
   @@index([createdAt])
   @@index([discountPct])
   @@index([scorePromocional])
-  @@unique([sourceId, store])
 }
 
 model PriceHistory {
