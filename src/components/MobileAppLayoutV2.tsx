@@ -31,12 +31,24 @@ export default function MobileAppLayoutV2({ offers, stats }: Props) {
   if (!offers || offers.length === 0) return null
 
   const sorted = [...offers].sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0))
-  const hero = sorted[0]
-  const feed = sorted.slice(1, 25).filter((o) => {
-    if (!search.trim()) return true
-    const term = search.toLowerCase()
-    return o.title.toLowerCase().includes(term)
-  })
+  // Normaliza texto removendo acentos para busca insensível
+  const normalize = (s: string) =>
+    s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+
+  const activeSearch = search.trim()
+  const filtered = activeSearch
+    ? sorted.filter((o) => {
+        const term = normalize(activeSearch)
+        return (
+          normalize(o.title || '').includes(term) ||
+          normalize(o.storeLabel || '').includes(term) ||
+          normalize(o.store || '').includes(term)
+        )
+      })
+    : sorted
+
+  const hero = activeSearch ? null : filtered[0]
+  const feed = activeSearch ? filtered : filtered.slice(1, 25)
 
   return (
     <div className="md:hidden bg-slate-50 min-h-screen">
@@ -78,10 +90,15 @@ export default function MobileAppLayoutV2({ offers, stats }: Props) {
             <button onClick={() => setSearch('')} className="text-xs text-slate-400 shrink-0">✕</button>
           )}
         </div>
+        {activeSearch && (
+          <p className="text-[11px] text-slate-500 mt-1.5 px-1">
+            {feed.length} oferta{feed.length !== 1 ? 's' : ''} encontrada{feed.length !== 1 ? 's' : ''} para &quot;{activeSearch}&quot;
+          </p>
+        )}
       </div>
 
       {/* ── HERO BANNER ── */}
-      {!search.trim() && hero && (
+      {!activeSearch && hero && (
         <a href={getBridgeUrl(hero.url, hero.storeLabel)}
           className="block mx-3 mt-3 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden">
           <div className="flex items-center p-3 gap-3">
@@ -118,7 +135,11 @@ export default function MobileAppLayoutV2({ offers, stats }: Props) {
       {/* ── FEED ── */}
       <div className="px-3 mt-4">
         <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-          <span>🔥</span> Melhores ofertas para você
+          {activeSearch ? (
+            <><span>🔍</span> Resultados da busca</>
+          ) : (
+            <><span>🔥</span> Melhores ofertas para você</>
+          )}
         </h3>
         <div className="space-y-2.5">
           {feed.map((offer) => (
