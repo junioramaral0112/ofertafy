@@ -162,7 +162,7 @@ function simpleHash(str: string): string {
  */
 export function cleanOffersPipeline<T extends {
   id?: string; sourceId?: string | null; store?: string; url?: string
-  title?: string; discountPct?: number; price?: number
+  title?: string; discountPct?: number; price?: number; clicks?: number
 }>(offers: T[]): Array<T & { stableId: string }> {
   if (!offers || !Array.isArray(offers)) return []
 
@@ -178,10 +178,15 @@ export function cleanOffersPipeline<T extends {
     return true
   })
 
-  // Fase 3: Ordenação determinística (discountPct desc, price asc)
+  // Fase 3: Ordenação — prioriza popularidade (clicks) + desconto
   const sorted = [...deduped].sort((a, b) => {
+    // Produtos mais clicados primeiro (campeões de venda)
+    const clickDiff = (b.clicks || 0) - (a.clicks || 0)
+    if (clickDiff !== 0) return clickDiff
+    // Depois por desconto
     const discDiff = (b.discountPct || 0) - (a.discountPct || 0)
     if (discDiff !== 0) return discDiff
+    // Depois por preço (menor primeiro)
     return (a.price || 0) - (b.price || 0)
   })
 

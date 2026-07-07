@@ -53,6 +53,18 @@ export async function fetchAmazonDeals(config: AffiliateConfig) {
     'movel-jardim', 'cadeira-praia', 'barraca-camping', 'saco-dormir',
     'lanterna-led', 'halter-academia', 'bicicleta-ergometrica', 'esteira',
     'vara-pesca', 'colchao-inflavel', 'cadeira-dobravel',
+    // 🚀 Alta intenção — eletrônicos
+    'iphone', 'iphone-16', 'samsung-galaxy', 'xiaomi-redmi', 'motorola-g',
+    'smart-tv-4k', 'samsung-tv', 'lg-tv', 'tcl-tv',
+    'airpods', 'smartwatch', 'apple-watch',
+    'videogame', 'ps5', 'xbox-series', 'nintendo-switch',
+    'notebook-gamer', 'notebook-dell', 'notebook-lenovo',
+    // 🏠 Casa
+    'geladeira-frost-free', 'fogao-cooktop', 'robo-aspirador',
+    'cafeteira-nespresso',
+    // 👟 Moda
+    'tenis-nike', 'tenis-adidas', 'vestido-festa',
+    'bolsa-transversal', 'perfume-importado',
   ]
 
   for (const term of searchTerms) {

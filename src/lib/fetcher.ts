@@ -33,7 +33,7 @@ export async function getHomeOffers(): Promise<{ flashDeals: any[]; topOffers: a
           price: { gt: 0 },
           discountPct: { gte: 5 }, // filtro leve — só ignora sem desconto
         },
-        orderBy: [{ discountPct: 'desc' }, { price: 'asc' }],
+        orderBy: [{ discountPct: 'desc' }, { clicks: 'desc' }, { price: 'asc' }],
         take: 8,
         include: { priceHistory: { orderBy: { checkedAt: 'desc' }, take: 30 } },
       }),
