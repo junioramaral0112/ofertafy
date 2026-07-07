@@ -35,7 +35,7 @@ export async function GET() {
 
   const items = offers
     .map(
-      (o) => `
+      (o: any) => `
     <item>
       <title><![CDATA[${o.title.slice(0, 100)} — ${formatPrice(o.price)} (-${o.discountPct}%)]]></title>
       <link>${siteUrl}/produto/${o.id}</link>

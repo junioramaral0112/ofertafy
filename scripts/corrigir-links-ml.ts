@@ -23,7 +23,7 @@ async function diagnosticar() {
   })
 
   const dups = todos.filter(
-    (o) =>
+    (o: any) =>
       o.url.includes('mercadolivre.com.br/produto.mercadolivre.com.br') ||
       o.url.includes('mercadolivre.com.br/www.mercadolivre.com.br'),
   )
