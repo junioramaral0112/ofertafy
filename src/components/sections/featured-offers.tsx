@@ -7,7 +7,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { OFFERS, getOfferKeyFromOffer } from "@/data/offers";
 
-export function FeaturedOffers() {
+export function FeaturedOffers({ searchTerm = "" }: { searchTerm?: string }) {
   const [activeCategory, setActiveCategory] = useState("Todos");
   const [likedItems, setLikedItems] = useState<Record<string, boolean>>({});
   const [convertedLinks, setConvertedLinks] = useState<Record<string, string>>({});
@@ -45,9 +45,12 @@ export function FeaturedOffers() {
     setLikedItems(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const filteredOffers = activeCategory === "Todos"
-    ? offers
-    : offers.filter(o => o.category === activeCategory);
+  const filteredOffers = (activeCategory === "Todos" ? offers : offers.filter(o => o.category === activeCategory))
+    .filter((o) => {
+      if (!searchTerm) return true;
+      const term = searchTerm.toLowerCase();
+      return o.name.toLowerCase().includes(term) || o.category.toLowerCase().includes(term) || o.source.toLowerCase().includes(term);
+    });
 
   return (
     <section id="featured-offers" className="py-24 relative overflow-hidden">
