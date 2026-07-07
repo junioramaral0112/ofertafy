@@ -12,22 +12,31 @@ import { Testimonials } from "@/components/sections/testimonials";
 import { FAQ } from "@/components/sections/faq";
 import { Newsletter } from "@/components/sections/newsletter";
 import { Footer } from "@/components/sections/footer";
+import { MobileHome } from "@/components/mobile/MobileHome";
 
 export default function Home() {
   return (
     <div className="bg-background-light dark:bg-background-dark min-h-screen text-slate-900 dark:text-white selection:bg-brand-purple/20 transition-colors">
-      <Navbar />
-      <Hero />
-      <Partners />
-      <HowItWorks />
-      <AIFeature />
-      <FeaturedOffers />
-      <Benefits />
-      <Stats />
-      <Testimonials />
-      <FAQ />
-      <Newsletter />
-      <Footer />
+      {/* DESKTOP — layout inalterado */}
+      <div className="hidden md:block">
+        <Navbar />
+        <Hero />
+        <Partners />
+        <HowItWorks />
+        <AIFeature />
+        <FeaturedOffers />
+        <Benefits />
+        <Stats />
+        <Testimonials />
+        <FAQ />
+        <Newsletter />
+        <Footer />
+      </div>
+
+      {/* MOBILE — layout estilo Mercado Livre */}
+      <div className="block md:hidden">
+        <MobileHome />
+      </div>
     </div>
   );
 }
