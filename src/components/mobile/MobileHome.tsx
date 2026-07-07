@@ -1,38 +1,13 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React from "react";
 import { Cpu, Search, Bell } from "lucide-react";
-import { OFFERS } from "@/data/offers";
 import { MobileBanner } from "./MobileBanner";
 import { MobileShortcuts } from "./MobileShortcuts";
 import { MobileFlashDeals } from "./MobileFlashDeals";
 import { MobileBestSellers } from "./MobileBestSellers";
 
 export function MobileHome() {
-  const [query, setQuery] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-
-  const handleSearch = () => {
-    setSearchTerm(query.trim());
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
-
-  const filteredOffers = useMemo(() => {
-    if (!searchTerm) return OFFERS;
-    const term = searchTerm.toLowerCase();
-    return OFFERS.filter(
-      (o) =>
-        o.name.toLowerCase().includes(term) ||
-        o.category.toLowerCase().includes(term) ||
-        o.source.toLowerCase().includes(term)
-    );
-  }, [searchTerm]);
-
   return (
     <div className="min-h-screen bg-background-light dark:bg-background-dark">
       {/* Header fixo simples */}
@@ -56,45 +31,21 @@ export function MobileHome() {
           </div>
         </div>
 
-        {/* Barra de busca funcional — estilo Mercado Livre */}
+        {/* Barra de busca fake estilo ML */}
         <div className="px-4 pb-2.5">
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
-            <button onClick={handleSearch} aria-label="Buscar" className="shrink-0">
-              <Search className="h-4 w-4 text-slate-400" />
-            </button>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Buscar ofertas..."
-              className="flex-1 bg-transparent text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 outline-none"
-            />
-            {query && (
-              <button
-                onClick={() => { setQuery(""); setSearchTerm(""); }}
-                className="text-xs text-slate-400 shrink-0"
-              >
-                ✕
-              </button>
-            )}
+            <Search className="h-4 w-4 text-slate-400" />
+            <span className="text-sm text-slate-400 dark:text-slate-500">Buscar ofertas...</span>
           </div>
         </div>
       </header>
 
       {/* Conteúdo com scroll contínuo */}
       <main className="px-4 py-3 space-y-5 pb-20">
-        {/* Resultado da busca */}
-        {searchTerm && (
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {filteredOffers.length} resultado{filteredOffers.length !== 1 ? "s" : ""} para &quot;{searchTerm}&quot;
-          </p>
-        )}
-
-        <MobileShortcuts />
         <MobileBanner />
-        <MobileFlashDeals offers={filteredOffers} />
-        <MobileBestSellers offers={filteredOffers} />
+        <MobileShortcuts />
+        <MobileFlashDeals />
+        <MobileBestSellers />
 
         {/* Rodapé simples */}
         <div className="text-center py-6 text-xs text-slate-400 dark:text-slate-600">
