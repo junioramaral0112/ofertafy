@@ -3,11 +3,12 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Flame, ArrowUpRight } from "lucide-react";
-import { OFFERS, getOfferKeyFromOffer } from "@/data/offers";
+import { OFFERS, type Offer } from "@/data/offers";
 import { generateAffiliateLink } from "@/lib/affiliate";
 
-export function MobileBestSellers() {
-  const bestSellers = [...OFFERS].sort((a, b) => b.likes - a.likes);
+export function MobileBestSellers({ offers: externalOffers }: { offers?: Offer[] }) {
+  const source = externalOffers ?? OFFERS;
+  const bestSellers = [...source].sort((a, b) => b.likes - a.likes);
 
   return (
     <div>

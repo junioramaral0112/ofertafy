@@ -3,10 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Zap, Clock } from "lucide-react";
-import { OFFERS } from "@/data/offers";
+import { OFFERS, type Offer } from "@/data/offers";
 import { generateAffiliateLink } from "@/lib/affiliate";
 
-export function MobileFlashDeals() {
+export function MobileFlashDeals({ offers: externalOffers }: { offers?: Offer[] }) {
   // Countdown falso estilo Mercado Livre
   const [timeLeft, setTimeLeft] = useState({ h: 4, m: 32, s: 18 });
 
@@ -25,7 +25,8 @@ export function MobileFlashDeals() {
   }, []);
 
   // Filtra ofertas com maior desconto para destaque
-  const flashDeals = [...OFFERS]
+  const source = externalOffers ?? OFFERS;
+  const flashDeals = [...source]
     .sort((a, b) => parseInt(b.discount) - parseInt(a.discount))
     .slice(0, 5);
 
