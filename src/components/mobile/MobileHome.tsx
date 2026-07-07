@@ -91,8 +91,8 @@ export function MobileHome() {
           </p>
         )}
 
-        <MobileBanner />
         <MobileShortcuts />
+        <MobileBanner />
         <MobileFlashDeals offers={filteredOffers} />
         <MobileBestSellers offers={filteredOffers} />
 
