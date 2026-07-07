@@ -16,3 +16,6 @@ pnpm-debug.log*
 # Arquivos de dados temporários (não fazem parte do build)
 *.txt
 WhatsApp.png
+
+.vercel
+.env*
