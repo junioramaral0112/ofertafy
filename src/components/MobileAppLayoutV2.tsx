@@ -2,6 +2,7 @@
 
 'use client'
 
+import { useState } from 'react'
 import type { OfferData } from '@/types'
 import { formatPrice, getBridgeUrl, getOfferKey } from '@/lib/utils'
 import { calculateIndiceOfertafy } from '@/lib/ia'
@@ -25,11 +26,17 @@ const QUICK_LINKS = [
 ]
 
 export default function MobileAppLayoutV2({ offers, stats }: Props) {
+  const [search, setSearch] = useState('')
+
   if (!offers || offers.length === 0) return null
 
   const sorted = [...offers].sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0))
   const hero = sorted[0]
-  const feed = sorted.slice(1, 25)
+  const feed = sorted.slice(1, 25).filter((o) => {
+    if (!search.trim()) return true
+    const term = search.toLowerCase()
+    return o.title.toLowerCase().includes(term)
+  })
 
   return (
     <div className="md:hidden bg-slate-50 min-h-screen">
@@ -56,8 +63,25 @@ export default function MobileAppLayoutV2({ offers, stats }: Props) {
         </div>
       </div>
 
+      {/* ── SEARCH BAR ── */}
+      <div className="bg-white border-b border-slate-100 px-3 py-2">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 border border-slate-200">
+          <span className="text-sm shrink-0">🔍</span>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar ofertas..."
+            className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 outline-none"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="text-xs text-slate-400 shrink-0">✕</button>
+          )}
+        </div>
+      </div>
+
       {/* ── HERO BANNER ── */}
-      {hero && (
+      {!search.trim() && hero && (
         <a href={getBridgeUrl(hero.url, hero.storeLabel)}
           className="block mx-3 mt-3 bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl overflow-hidden">
           <div className="flex items-center p-3 gap-3">
