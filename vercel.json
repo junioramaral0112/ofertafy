@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/fetch?secret=577dd4d5f0ce78ed4ff2c1188b805c9e",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
