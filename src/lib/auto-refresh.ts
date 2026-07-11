@@ -214,10 +214,11 @@ export async function runAutoRefresh(storeFilter?: string): Promise<RefreshResul
       const deals = await scraper()
       result.dealsFound = deals.length
 
-      // ── Upsert deals ──
+      // ── Upsert deals (limit to 50 per batch to avoid DB overload) ──
       const activeSourceIds = new Set<string>()
+      const batch = deals.slice(0, 50)
 
-      for (const deal of deals) {
+      for (const deal of batch) {
         try {
           if (!deal.sourceId || !deal.title || deal.price <= 0) continue
 
