@@ -1,58 +1,91 @@
 /**
  * AUTO-REFRESH ENGINE
  *
- * Orquestra os scrapers EXISTENTES (que ja funcionam sem API keys).
- * Apenas controla batch e frequencia — NAO reescreve a logica de scraping.
+ * NAO executa scraping (cron /api/fetch ja faz isso).
+ * Apenas atualiza o ranking e rotaciona ofertas no banco existente.
+ *
+ * Foca em:
+ *   - Atualizar score de ofertas existentes
+ *   - Reordenar Home com produtos diversificados
+ *   - Limpar cache para forcar refresh visual
  */
 
 import { prisma } from './prisma'
 import { invalidateCache } from './cache'
-import { fetchAllDeals } from './fetch-all-deals'
 
 interface RefreshResult {
   store: string
-  dealsFound: number
-  dealsAdded: number
-  dealsUpdated: number
-  dealsDeactivated: number
+  processed: number
+  flashUpdated: number
+  dealTagsApplied: number
+  staleCleaned: number
   errors: string[]
   durationMs: number
 }
 
 export async function runAutoRefresh(storeFilter?: string): Promise<RefreshResult[]> {
   const results: RefreshResult[] = []
+  const stores = storeFilter ? [storeFilter] : ['mercadolivre', 'magalu', 'shopee', 'amazon']
 
-  try {
+  for (const store of stores) {
     const start = Date.now()
-
-    // Usa o fetchAllDeals EXISTENTE — mesmo scraper que ja funciona
-    const allResults = await fetchAllDeals({
-      storeFilter,
-      batchNumber: 1,
-      batchSize: 50,
-    })
-
-    for (const r of allResults) {
-      const storeName = r.store?.toLowerCase().replace(/ /g, '') || 'unknown'
-      if (storeFilter && storeName !== storeFilter) continue
-
-      results.push({
-        store: storeName,
-        dealsFound: r.offersFound || 0,
-        dealsAdded: r.offersAdded || 0,
-        dealsUpdated: r.offersUpdated || 0,
-        dealsDeactivated: 0,
-        errors: (r.errors || []).slice(0, 3),
-        durationMs: Date.now() - start,
-      })
-    }
-  } catch (e: any) {
-    results.push({
-      store: storeFilter || 'all',
-      dealsFound: 0, dealsAdded: 0, dealsUpdated: 0, dealsDeactivated: 0,
-      errors: [e.message?.slice(0, 200)],
+    const result: RefreshResult = {
+      store,
+      processed: 0,
+      flashUpdated: 0,
+      dealTagsApplied: 0,
+      staleCleaned: 0,
+      errors: [],
       durationMs: 0,
-    })
+    }
+
+    try {
+      // 1. Marcar como FLASH ofertas com alto desconto (>30%) e recentes
+      const flashUpdated = await prisma.offer.updateMany({
+        where: {
+          store,
+          discountPct: { gte: 30 },
+          price: { gt: 0 },
+          imageUrl: { not: '' },
+          isFlash: false,
+          updatedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+        data: { isFlash: true },
+      })
+      result.flashUpdated = flashUpdated.count
+
+      // 2. Marcar como BEST SELLER ofertas com muitos cliques
+      const bestsellerUpdated = await prisma.offer.updateMany({
+        where: {
+          store,
+          clicks: { gte: 10 },
+          isFlash: false,
+        },
+        data: { isFlash: true },
+      })
+      result.flashUpdated += bestsellerUpdated.count
+
+      // 3. Limpar FLASH de ofertas antigas (>7 dias sem update)
+      const staleCleaned = await prisma.offer.updateMany({
+        where: {
+          store,
+          isFlash: true,
+          updatedAt: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+        data: { isFlash: false },
+      })
+      result.staleCleaned = staleCleaned.count
+
+      // 4. Contar total processado
+      const total = await prisma.offer.count({ where: { store, price: { gt: 0 } } })
+      result.processed = total
+
+    } catch (e: any) {
+      result.errors.push(e.message?.slice(0, 200))
+    }
+
+    result.durationMs = Date.now() - start
+    results.push(result)
   }
 
   // Invalidate caches
