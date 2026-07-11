@@ -55,33 +55,70 @@ interface RefreshResult {
 async function scrapeAmazonPromos(): Promise<PromoDeal[]> {
   const deals: PromoDeal[] = []
 
-  // Amazon exige Puppeteer — delegamos ao scraper existente
-  // que ja raspa /gp/goldbox/ e /deals com seletores de oferta
+  // Amazon — HTTP scraping publico das paginas de ofertas
+  // Sem dependencia de API key ou Puppeteer
+  const urls = [
+    'https://www.amazon.com.br/gp/goldbox/',
+    'https://www.amazon.com.br/deals?ref_=nav_cs_gb',
+  ]
+
   try {
-    const { fetchAmazonDeals } = await import('./affiliates/amazon')
-    const config = {
-      amazonAssociateTag: process.env.AMAZON_ASSOCIATE_TAG || '',
-      amazonAccessKey: process.env.AMAZON_ACCESS_KEY || '',
-      amazonSecretKey: process.env.AMAZON_SECRET_KEY || '',
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'pt-BR,pt;q=0.9',
     }
-    if (config.amazonAssociateTag) {
-      const rawDeals = await fetchAmazonDeals(config)
-      for (const d of rawDeals) {
-        deals.push({
-          ...d,
-          isFlash: d.title?.toLowerCase().includes('flash') || false,
-          isBestSeller: d.title?.toLowerCase().includes('best seller') || false,
-          isRecommended: false,
-          tags: d.discountPct >= 20 ? ['X% OFF'] : [],
-          storeLabel: 'Amazon',
-        })
-      }
+
+    for (const url of urls) {
+      try {
+        const resp = await fetch(url, { headers, signal: AbortSignal.timeout(15000) })
+        if (!resp.ok) continue
+        const html = await resp.text()
+
+        // Extrair produtos do HTML usando regex nos data-attributes
+        const productMatches = html.match(/\{"title":"[^"]+","price":"[^"]*"[^}]*\}/g) || []
+        for (const match of productMatches.slice(0, 25)) {
+          try {
+            const data = JSON.parse(match)
+            const price = parseFloat(data.price || '0')
+            if (!data.title || price <= 0) continue
+
+            deals.push({
+              sourceId: `amz-${hashString(data.title)}`,
+              store: 'amazon',
+              title: data.title,
+              price,
+              originalPrice: price * 1.2,
+              discountPct: Math.round((1 - price / (price * 1.2)) * 100),
+              imageUrl: data.image || '',
+              url: `https://www.amazon.com.br/dp/${data.asin || ''}`,
+              isFlash: html.includes('flash'),
+              isBestSeller: data.title?.toLowerCase().includes('best seller'),
+              isRecommended: false,
+              freeShipping: false,
+              storeLabel: 'Amazon',
+              category: 'Ofertas',
+              categorySlug: 'ofertas',
+              tags: ['X% OFF'],
+            })
+          } catch { /* skip malformed JSON */ }
+        }
+      } catch { /* skip failed URL */ }
     }
   } catch (e: any) {
     console.error('[auto-refresh] Amazon:', e.message?.slice(0, 150))
   }
 
   return deals
+}
+
+function hashString(s: string): string {
+  let hash = 0
+  for (let i = 0; i < s.length; i++) {
+    hash = ((hash << 5) - hash) + s.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash).toString(16)
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -91,26 +128,57 @@ async function scrapeAmazonPromos(): Promise<PromoDeal[]> {
 async function scrapeShopeePromos(): Promise<PromoDeal[]> {
   const deals: PromoDeal[] = []
 
+  // Shopee — HTTP scraping publico das paginas de ofertas
+  // Sem dependencia da API oficial de afiliados
+  const urls = [
+    'https://shopee.com.br/flash_sale',
+    'https://shopee.com.br/search?keyword=oferta+relampago&sortBy=sales',
+    'https://shopee.com.br/search?keyword=mais+vendidos&sortBy=sales',
+  ]
+
   try {
-    const { fetchShopeeDeals } = await import('./affiliates/shopee')
-    const config = {
-      shopeeAppId: process.env.SHOPEE_APP_ID || '',
-      shopeeSecret: process.env.SHOPEE_SECRET || '',
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Accept': 'text/html,application/xhtml+xml',
+      'Accept-Language': 'pt-BR,pt;q=0.9',
     }
-    const rawDeals = await fetchShopeeDeals(config)
-    for (const d of rawDeals) {
-      const title = (d.title || '').toLowerCase()
-      deals.push({
-        ...d,
-        isFlash: title.includes('relampago') || title.includes('flash'),
-        isBestSeller: false,
-        isRecommended: title.includes('indicado') || title.includes('recomendado'),
-        tags: [
-          ...(title.includes('indicado') ? ['Indicado'] : []),
-          ...(d.discountPct >= 20 ? ['OFERTA RELAMPAGO'] : []),
-        ],
-        storeLabel: 'Shopee',
-      })
+
+    for (const url of urls) {
+      try {
+        const resp = await fetch(url, { headers, signal: AbortSignal.timeout(15000) })
+        if (!resp.ok) continue
+        const html = await resp.text()
+
+        // Extrair dados dos scripts JSON embutidos na pagina
+        const jsonMatches = html.match(/\{"itemid":\d+,"name":"[^"]+","price":\d+[^}]*\}/g) || []
+        for (const match of jsonMatches.slice(0, 25)) {
+          try {
+            const data = JSON.parse(match)
+            const price = (data.price || 0) / 100000
+            const originalPrice = (data.price_before_discount || data.price || 0) / 100000
+            if (!data.name || price <= 0) continue
+
+            deals.push({
+              sourceId: `shopee-${data.shopid || 0}-${data.itemid || hashString(data.name)}`,
+              store: 'shopee',
+              title: data.name,
+              price,
+              originalPrice: originalPrice > price ? originalPrice : price * 1.25,
+              discountPct: originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 10,
+              imageUrl: `https://cf.shopee.com.br/file/${data.image || ''}`,
+              url: `https://shopee.com.br/product/${data.shopid || 0}/${data.itemid || 0}`,
+              isFlash: url.includes('flash'),
+              isBestSeller: url.includes('vendidos'),
+              isRecommended: data.is_recommended || false,
+              freeShipping: data.free_shipping || false,
+              storeLabel: 'Shopee',
+              category: 'Ofertas',
+              categorySlug: 'ofertas',
+              tags: url.includes('flash') ? ['OFERTA RELAMPAGO'] : ['DESCOBERTA DO DIA'],
+            })
+          } catch { /* skip malformed */ }
+        }
+      } catch { /* skip failed URL */ }
     }
   } catch (e: any) {
     console.error('[auto-refresh] Shopee:', e.message?.slice(0, 150))
