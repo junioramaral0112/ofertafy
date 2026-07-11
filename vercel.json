@@ -3,10 +3,6 @@
     {
       "path": "/api/fetch",
       "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/auto-refresh",
-      "schedule": "0 */3 * * *"
     }
   ]
 }
