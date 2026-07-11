@@ -1,5 +1,6 @@
 import type { AffiliateConfig } from '@/types'
 import { sanitizePrice } from '@/lib/utils'
+import { mergeSearchTerms, validateOffer } from '@/lib/offer-discovery'
 
 /**
  * 🔵 MAGALU / MAGAZINE LUIZA SCRAPER
@@ -59,7 +60,8 @@ export async function fetchMagaluDeals(config: AffiliateConfig) {
 
   console.log(`🔵 Magalu: buscando via Magazine Voce (magazine${storeId})...`)
 
-  for (const term of searchTerms) {
+  const allTerms = mergeSearchTerms(searchTerms, { includePromo: true, includePriority: true })
+  for (const term of allTerms) {
     try {
       const url = `https://www.magazinevoce.com.br/magazine${storeId}/busca/${term}`
       const res = await fetch(url, { headers: MV_HEADERS })
@@ -108,7 +110,10 @@ function extractFromNextData(html: string, storeId: string, category: string): R
 
     for (const item of products) {
       const offer = buildMagaluVoceOffer(item, storeId, category)
-      if (offer) offers.push(offer)
+      if (offer) {
+        const validation = validateOffer(offer)
+        if (validation.valid) offers.push(offer)
+      }
     }
   } catch (e) {
     console.error(`   extract error:`, (e as Error).message?.slice(0, 100))

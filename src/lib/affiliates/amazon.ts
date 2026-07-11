@@ -1,5 +1,6 @@
 import type { AffiliateConfig } from '@/types'
 import { sanitizePrice } from '@/lib/utils'
+import { mergeSearchTerms, validateOffer } from '@/lib/offer-discovery'
 
 /**
  * 🟠 AMAZON BRASIL SCRAPER
@@ -67,7 +68,8 @@ export async function fetchAmazonDeals(config: AffiliateConfig) {
     'bolsa-transversal', 'perfume-importado',
   ]
 
-  for (const term of searchTerms) {
+  const allTerms = mergeSearchTerms(searchTerms, { includePromo: true, includePriority: true })
+  for (const term of allTerms) {
     urls.push(`https://www.amazon.com.br/s?k=${encodeURIComponent(term)}&s=exact-aware-popularity-rank`)
   }
 

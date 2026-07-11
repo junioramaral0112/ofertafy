@@ -1,6 +1,7 @@
 import type { AffiliateConfig } from '@/types'
 import { sanitizePrice } from '@/lib/utils'
 import crypto from 'crypto'
+import { mergeSearchTerms, validateOffer, calculateEnhancedScore } from '@/lib/offer-discovery'
 
 /**
  * 🔴 SHOPEE API OFICIAL DE AFILIADOS (GRAPHQL)
@@ -343,7 +344,8 @@ export async function fetchShopeeDeals(config: AffiliateConfig) {
   const seen = new Set<string>()
 
   // sortType=2 → Mais vendidos primeiro
-  for (const term of SEARCH_TERMS) {
+  const allTerms = mergeSearchTerms(SEARCH_TERMS, { includePromo: true, includePriority: true })
+  for (const term of allTerms) {
     try {
       let termTotal = 0
       for (let page = 0; page < MAX_PAGES; page++) {
@@ -355,6 +357,8 @@ export async function fetchShopeeDeals(config: AffiliateConfig) {
         for (const node of nodes) {
           const offer = buildOffer(node)
           if (offer && !seen.has(offer.sourceId)) {
+            const validation = validateOffer(offer)
+            if (!validation.valid) continue
             seen.add(offer.sourceId)
             all.push(offer)
             termTotal++

@@ -1,5 +1,6 @@
 import type { AffiliateConfig } from '@/types'
 import { classifyProduct, calculatePromoScore } from '@/lib/utils'
+import { mergeSearchTerms, validateOffer, calculateEnhancedScore } from '@/lib/offer-discovery'
 
 /**
  * 🟡 MERCADO LIVRE SCRAPER
@@ -59,9 +60,10 @@ export async function fetchMercadoLivreDeals(config: AffiliateConfig) {
   const seen = new Set<string>()
   const mattTool = config.mlMattTool || '35888960'
 
-  console.log('🟡 ML: iniciando busca massiva (' + ML_SEARCH_TERMS.length + ' termos)')
+  const allTerms = mergeSearchTerms(ML_SEARCH_TERMS, { includePromo: true, includePriority: true })
+  console.log('🟡 ML: iniciando busca massiva (' + allTerms.length + ' termos)')
 
-  for (const term of ML_SEARCH_TERMS) {
+  for (const term of allTerms) {
     try {
       const url = `https://www.mercadolivre.com.br/search?q=${encodeURIComponent(term)}`
       const res = await fetch(url, { headers: ML_HEADERS, signal: AbortSignal.timeout(15000) })
@@ -72,6 +74,8 @@ export async function fetchMercadoLivreDeals(config: AffiliateConfig) {
       let count = 0
       for (const o of offers) {
         if (!seen.has(o.sourceId)) {
+          const validation = validateOffer(o)
+          if (!validation.valid) continue
           seen.add(o.sourceId)
           all.push(o)
           count++
@@ -211,12 +215,16 @@ function parseItem(item: any, mattTool: string): RawOffer | null {
 
     if (!title || price <= 0) return null
 
-    // ⭐ Score promocional
-    const scorePromocional = calculatePromoScore({
+    // ⭐ Score promocional (enhanced)
+    const scorePromocional = calculateEnhancedScore({
       discountPct,
       freeShipping,
-      isFull,
+      isFlash: false,
       isBestSeller,
+      hasCoupon: false,
+      isRecent: true,
+      titleQuality: title.length > 30 ? 0.9 : 0.5,
+      imageQuality: imageUrl ? 0.8 : 0,
     })
 
     // Imagem
