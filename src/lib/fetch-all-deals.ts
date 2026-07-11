@@ -32,16 +32,33 @@ function getAffiliateConfig() {
   }
 }
 
-export async function fetchAllDeals(): Promise<FetchResult[]> {
+export async function fetchAllDeals(opts?: {
+  storeFilter?: string
+  batchNumber?: number
+  batchSize?: number
+}): Promise<FetchResult[]> {
   const config = getAffiliateConfig()
   const results: FetchResult[] = []
+  const storeFilter = opts?.storeFilter
+  const batchNumber = opts?.batchNumber || 1
+  const batchSize = opts?.batchSize || 8
 
-  // Lojas leves (sem Puppeteer)
-  const [mlDeals, magaluDeals, shopeeDeals] = await Promise.all([
-    fetchMercadoLivreDeals(config).catch((e) => { console.error('ML:', e); return [] }),
-    fetchMagaluDeals(config).catch((e) => { console.error('Magalu:', e); return [] }),
-    fetchShopeeDeals(config).catch((e) => { console.error('Shopee:', e); return [] }),
-  ])
+  const batchOpts = { batchNumber, batchSize }
+
+  // ── Fetch only the requested store (batched) ──
+  let mlDeals: any[] = []
+  let magaluDeals: any[] = []
+  let shopeeDeals: any[] = []
+
+  if (!storeFilter || storeFilter === 'mercadolivre') {
+    mlDeals = await fetchMercadoLivreDeals(config).catch((e) => { console.error('ML:', e); return [] })
+  }
+  if (!storeFilter || storeFilter === 'magalu') {
+    magaluDeals = await fetchMagaluDeals(config, batchOpts).catch((e) => { console.error('Magalu:', e); return [] })
+  }
+  if (!storeFilter || storeFilter === 'shopee') {
+    shopeeDeals = await fetchShopeeDeals(config).catch((e) => { console.error('Shopee:', e); return [] })
+  }
 
   // Amazon — Puppeteer (import dinâmico ISOLADO)
   let amazonDeals: any[] = []

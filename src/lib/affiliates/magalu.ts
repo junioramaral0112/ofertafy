@@ -25,7 +25,7 @@ interface RawOffer {
   categorySlug: string; installment: string | null; freeShipping: boolean
 }
 
-export async function fetchMagaluDeals(config: AffiliateConfig) {
+export async function fetchMagaluDeals(config: AffiliateConfig, batchOpts?: { batchNumber?: number; batchSize?: number }) {
   const storeId = config.magaluStoreId || 'ofertafy'
   const all: RawOffer[] = []
 
@@ -61,7 +61,16 @@ export async function fetchMagaluDeals(config: AffiliateConfig) {
   console.log(`🔵 Magalu: buscando via Magazine Voce (magazine${storeId})...`)
 
   const allTerms = mergeSearchTerms(searchTerms, { includePromo: true, includePriority: true })
-  for (const term of allTerms) {
+
+  // Batch support: slice terms for this execution
+  const batchNum = batchOpts?.batchNumber || 1
+  const batchSz = batchOpts?.batchSize || allTerms.length
+  const start = (batchNum - 1) * batchSz
+  const batchTerms = allTerms.slice(start, start + batchSz)
+
+  console.log(`🔵 Magalu: batch ${batchNum} — ${batchTerms.length} termos (${start}-${start + batchTerms.length} de ${allTerms.length})`)
+
+  for (const term of batchTerms) {
     try {
       const url = `https://www.magazinevoce.com.br/magazine${storeId}/busca/${term}`
       const res = await fetch(url, { headers: MV_HEADERS })
