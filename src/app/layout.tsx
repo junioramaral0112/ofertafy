@@ -3,6 +3,7 @@ import { Suspense } from 'react'
 import Script from 'next/script'
 import './globals.css'
 import Header from '@/components/Header'
+import TrustBanner from '@/components/TrustBanner'
 import Footer from '@/components/Footer'
 import WhatsAppFloat from '@/components/WhatsAppFloat'
 import { getBaseUrl } from '@/lib/utils'
@@ -123,6 +124,7 @@ export default function RootLayout({
         <Suspense fallback={<div className="h-16 bg-white border-b border-slate-200" />}>
           <Header />
         </Suspense>
+        <TrustBanner />
         <main className="flex-1">{children}</main>
         <Footer />
         <Suspense fallback={null}>
