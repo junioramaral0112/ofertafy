@@ -1,20 +1,47 @@
 import { prisma } from './prisma'
 import { getCached, setCache, invalidateCache } from './cache'
 
-export async function getHomeOffers(): Promise<{ flashDeals: any[]; topOffers: any[]; recentOffers: any[] }> {
+// ═══════════════════════════════════════════════════════════
+// CATEGORIAS PRIORITARIAS — keywords para classificacao
+// ═══════════════════════════════════════════════════════════
+
+const PRIORITY_KEYWORDS: Record<string, string[]> = {
+  tv: ['tv', 'smart tv', 'televisao', 'televisão', 'oled', 'qled', '4k'],
+  celular: ['celular', 'smartphone', 'iphone', 'samsung galaxy', 'xiaomi', 'motorola', 'telefone'],
+  notebook: ['notebook', 'laptop', 'macbook', 'chromebook'],
+  casa: ['air fryer', 'cafeteira', 'aspirador', 'robo aspirador', 'robô aspirador',
+         'geladeira', 'fogao', 'fogão', 'microondas', 'micro-ondas', 'maquina', 'máquina',
+         'liquidificador', 'ventilador', 'climatizador', 'purificador'],
+  moda: ['tenis', 'tênis', 'vestido', 'perfume', 'maquiagem', 'bolsa', 'camisa',
+         'camiseta', 'calca', 'calça', 'jaqueta', 'relogio', 'relógio', 'oculos', 'óculos'],
+}
+
+function classifyByTitle(title: string): string | null {
+  const t = title.toLowerCase()
+  for (const [cat, keywords] of Object.entries(PRIORITY_KEYWORDS)) {
+    if (keywords.some(kw => t.includes(kw))) return cat
+  }
+  return null
+}
+
+// ═══════════════════════════════════════════════════════════
+// HOME OFFERS — Diversified, quota-based selection
+// ═══════════════════════════════════════════════════════════
+
+export async function getHomeOffers(): Promise<{
+  flashDeals: any[]; topOffers: any[]; recentOffers: any[]
+}> {
   const cacheKey = 'home:offers'
   const cached = getCached<{ flashDeals: any[]; topOffers: any[]; recentOffers: any[] }>(cacheKey)
   if (cached) return cached
 
   const [flashDeals, topOffers] = await Promise.all([
-    // Flash: ofertas relâmpago ativas, maior desconto primeiro
     prisma.offer.findMany({
       where: { isFlash: true, flashEndsAt: { gt: new Date() } },
       orderBy: [{ discountPct: 'desc' }, { price: 'asc' }],
       take: 10,
       include: { priceHistory: { orderBy: { checkedAt: 'desc' }, take: 30 } },
     }),
-    // Top week: mais clicados
     prisma.offer.findMany({
       orderBy: { clicks: 'desc' },
       take: 12,
@@ -22,45 +49,97 @@ export async function getHomeOffers(): Promise<{ flashDeals: any[]; topOffers: a
     }),
   ])
 
-  // Recentes: busca 8 de cada loja ativa e intercala para equilibrar
-  // Filtro leve: só ignora produtos sem desconto ou com preço zero
+  // ── Buscar 100 candidatos por loja (sem filtro de desconto) ──
   const stores = ['mercadolivre', 'magalu', 'shopee', 'amazon']
   const storeOffers = await Promise.all(
     stores.map((store) =>
       prisma.offer.findMany({
-        where: {
-          store,
-          price: { gt: 0 },
-          discountPct: { gte: 5 }, // filtro leve — só ignora sem desconto
-        },
-        orderBy: [{ discountPct: 'desc' }, { clicks: 'desc' }, { price: 'asc' }],
-        take: 8,
+        where: { store, price: { gt: 0 } },
+        orderBy: [{ clicks: 'desc' }, { discountPct: 'desc' }, { price: 'asc' }],
+        take: 100,
         include: { priceHistory: { orderBy: { checkedAt: 'desc' }, take: 30 } },
       }),
     ),
   )
 
-  // Intercala: 1 de cada loja alternadamente
+  // ── Pool unico com todos os candidatos, deduplicado ──
+  const seen = new Set<string>()
+  const pool: any[] = []
+  for (const arr of storeOffers) {
+    for (const o of arr) {
+      const key = `${o.store}|${o.sourceId || o.id}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        pool.push(o)
+      }
+    }
+  }
+
+  // ── Classificar por categoria ──
+  const buckets: Record<string, any[]> = { tv: [], celular: [], notebook: [], casa: [], moda: [], other: [] }
+  const used = new Set<string>()
+
+  for (const o of pool) {
+    const cat = classifyByTitle(o.title || '') || 'other'
+    if (buckets[cat]) buckets[cat].push(o)
+    else buckets['other'].push(o)
+  }
+
+  // ── Selecionar com cotas minimas ──
+  const selected: any[] = []
+  const addFromBucket = (bucket: any[], count: number) => {
+    for (const o of bucket) {
+      if (count <= 0) break
+      const key = `${o.store}|${o.sourceId || o.id}`
+      if (!used.has(key)) {
+        used.add(key)
+        selected.push(o)
+        count--
+      }
+    }
+  }
+
+  // Cota minima: 4 de cada categoria
+  addFromBucket(buckets['tv'] || [], 4)
+  addFromBucket(buckets['celular'] || [], 4)
+  addFromBucket(buckets['notebook'] || [], 4)
+  addFromBucket(buckets['casa'] || [], 4)
+  addFromBucket(buckets['moda'] || [], 4)
+
+  // Top descontos (ainda nao selecionados)
+  const byDiscount = [...pool].sort((a, b) => (b.discountPct || 0) - (a.discountPct || 0))
+  addFromBucket(byDiscount, 8)
+
+  // Completar ate 30 com o restante
+  addFromBucket(pool, 30 - selected.length)
+
+  // ── Intercalar lojas para equilibrio ──
+  const perStore: Record<string, any[]> = {}
+  for (const o of selected) {
+    if (!perStore[o.store]) perStore[o.store] = []
+    perStore[o.store].push(o)
+  }
+
   const recentOffers: any[] = []
   let idx = 0
-  while (recentOffers.length < 24 && idx < 8) {
-    for (const arr of storeOffers) {
-      if (arr[idx]) recentOffers.push(arr[idx])
-      if (recentOffers.length >= 24) break
+  while (recentOffers.length < selected.length && idx < 30) {
+    for (const store of stores) {
+      const arr = perStore[store]
+      if (arr && arr[idx]) recentOffers.push(arr[idx])
+      if (recentOffers.length >= selected.length) break
     }
     idx++
   }
 
   const data = { flashDeals, topOffers, recentOffers }
-
-  // ⚠️ Só cacheia se houver dados reais (evita cache vazio do build)
   const hasData = flashDeals.length > 0 || topOffers.length > 0 || recentOffers.length > 0
-  if (hasData) {
-    setCache(cacheKey, data, 300)
-  }
-
+  if (hasData) setCache(cacheKey, data, 300)
   return data
 }
+
+// ═══════════════════════════════════════════════════════════
+// (restante do arquivo inalterado)
+// ═══════════════════════════════════════════════════════════
 
 export async function getOffersByCategory(slug: string, page = 1, pageSize = 24) {
   const skip = (page - 1) * pageSize
@@ -102,37 +181,23 @@ export async function searchOffers(
   const skip = (page - 1) * pageSize
   const where: Record<string, unknown> = {}
 
-  // Busca por palavra-chave: case-insensitive + múltiplas palavras
   if (query) {
     const words = query.trim().split(/\s+/).filter((w) => w.length > 0)
     if (words.length === 1) {
-      // Palavra única: contains case-insensitive
       where.title = { contains: words[0], mode: 'insensitive' }
     } else {
-      // Múltiplas palavras: cada uma deve aparecer no título (AND)
-      where.AND = words.map((w) => ({
-        title: { contains: w, mode: 'insensitive' },
-      }))
+      where.AND = words.map((w) => ({ title: { contains: w, mode: 'insensitive' } }))
     }
   }
 
-  // Filtro por loja
   if (filters.store) where.store = filters.store
-
-  // Filtro por categoria (via categorySlug)
   if (filters.category) where.categorySlug = filters.category
-
-  // Filtro por faixa de preço
   if (filters.minPrice !== undefined || filters.maxPrice !== undefined) {
     where.price = {}
     if (filters.minPrice !== undefined) (where.price as Record<string, number>).gte = filters.minPrice
     if (filters.maxPrice !== undefined) (where.price as Record<string, number>).lte = filters.maxPrice
   }
-
-  // Filtro por desconto mínimo
   if (filters.minDiscount) where.discountPct = { gte: filters.minDiscount }
-
-  // Filtro por frete grátis
   if (filters.freeShipping) where.freeShipping = true
 
   const [offers, total] = await Promise.all([
@@ -194,9 +259,6 @@ export async function getStats(): Promise<{ totalOffers: number; totalClicks: nu
     stores: stores.map((s) => ({ store: s.store, count: s._count })),
   }
 
-  // ⚠️ Só cacheia se houver dados reais
-  if (stats.totalOffers > 0) {
-    setCache(cacheKey, stats, 600)
-  }
+  if (stats.totalOffers > 0) setCache(cacheKey, stats, 600)
   return stats
 }
