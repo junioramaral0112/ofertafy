@@ -236,8 +236,6 @@ export async function runAutoRefresh(storeFilter?: string): Promise<RefreshResul
                 url: deal.url,
                 freeShipping: deal.freeShipping,
                 isFlash: deal.isFlash,
-                isBestSeller: deal.isBestSeller,
-                isRecommended: deal.isRecommended,
                 updatedAt: new Date(),
               },
             })
@@ -245,7 +243,20 @@ export async function runAutoRefresh(storeFilter?: string): Promise<RefreshResul
           } else {
             await prisma.offer.create({
               data: {
-                ...deal,
+                title: deal.title,
+                description: null,
+                imageUrl: deal.imageUrl,
+                price: deal.price,
+                originalPrice: deal.originalPrice,
+                discountPct: deal.discountPct,
+                url: deal.url,
+                store: deal.store,
+                storeLabel: deal.storeLabel,
+                category: deal.category,
+                categorySlug: deal.categorySlug,
+                freeShipping: deal.freeShipping,
+                isFlash: deal.isFlash,
+                sourceId: deal.sourceId,
                 clicks: 0,
                 likes: 0,
                 scorePromocional: 0,
