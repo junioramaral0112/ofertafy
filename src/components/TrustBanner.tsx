@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Shield, X, Check } from "lucide-react";
+import { Shield, X } from "lucide-react";
 
 const STORAGE_KEY = "ofertafy_trust_banner_closed";
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
@@ -45,37 +45,17 @@ export default function TrustBanner() {
         <div className="flex items-center gap-2 mb-2 pr-6">
           <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
           <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-            Compra 100% Segura
+            Compra 100% segura
           </p>
         </div>
 
-        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-2.5 max-w-3xl">
-          O <strong>OfertaFy</strong> nao vende produtos. Somos um portal que reune ofertas da
-          Amazon, Shopee, Mercado Livre e Magalu. Ao clicar em uma oferta voce sera direcionado
-          para o site <strong>OFICIAL</strong> da loja para finalizar sua compra com total seguranca.
+        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
+          O <strong>OfertaFy</strong> nao vende produtos.
+          Somos um portal que reune ofertas da Amazon, Shopee, Mercado Livre e Magalu.
+          Ao clicar em uma oferta, voce sera direcionado ao site oficial da loja
+          para finalizar sua compra com seguranca.
+          O pagamento e realizado exclusivamente no site oficial da loja.
         </p>
-
-        <p className="text-xs text-slate-500 dark:text-slate-500 mb-2.5 italic">
-          Pagamento realizado apenas na loja oficial.
-        </p>
-
-        {/* Trust seals */}
-        <div className="flex flex-wrap gap-x-5 gap-y-1.5">
-          {[
-            "Compra na loja oficial",
-            "Pagamento Seguro",
-            "Garantia da Loja",
-            "Sem intermediarios",
-          ].map((label) => (
-            <span
-              key={label}
-              className="inline-flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-400 font-medium"
-            >
-              <Check className="h-3 w-3 shrink-0" />
-              {label}
-            </span>
-          ))}
-        </div>
       </div>
     </div>
   );
