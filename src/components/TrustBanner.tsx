@@ -50,11 +50,11 @@ export default function TrustBanner() {
         </div>
 
         <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
-          O <strong>OfertaFy</strong> nao vende produtos.
-          Somos um portal que reune ofertas da Amazon, Shopee, Mercado Livre e Magalu.
-          Ao clicar em uma oferta, voce sera direcionado ao site oficial da loja
-          para finalizar sua compra com seguranca.
-          O pagamento e realizado exclusivamente no site oficial da loja.
+          O <strong>OfertaFy</strong> não vende produtos.
+          Somos um portal que reúne ofertas da Amazon, Shopee, Mercado Livre e Magalu.
+          Ao clicar em uma oferta, você será direcionado ao site oficial da loja
+          para finalizar sua compra com segurança.
+          O pagamento é realizado exclusivamente no site oficial da loja.
         </p>
       </div>
     </div>
