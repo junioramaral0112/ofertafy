@@ -67,6 +67,7 @@ export default function AdminPage() {
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [storeFilter, setStoreFilter] = useState('')
   const [scraping, setScraping] = useState(false)
   const [marketingOffer, setMarketingOffer] = useState<Offer | null>(null)
 
@@ -93,16 +94,22 @@ export default function AdminPage() {
     setScraping(false)
   }
 
-  async function loadOffers() {
+  async function loadOffers(store?: string) {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/offers')
+      const url = store ? `/api/admin/offers?store=${store}` : '/api/admin/offers'
+      const res = await fetch(url)
       const data = await res.json()
       setOffers(data.offers || [])
     } catch {
       setError('Erro ao carregar ofertas')
     }
     setLoading(false)
+  }
+
+  function handleStoreFilter(store: string) {
+    setStoreFilter(store)
+    loadOffers(store)
   }
 
   function openNew() {
@@ -244,6 +251,27 @@ export default function AdminPage() {
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          {/* Store filter bar */}
+          <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-slate-500 mr-1">Filtrar:</span>
+            {[
+              { value: '', label: 'Todas' },
+              { value: 'amazon', label: 'Amazon', color: 'bg-[#FF9900]' },
+              { value: 'shopee', label: 'Shopee', color: 'bg-[#EE4D2D]' },
+              { value: 'mercadolivre', label: 'Mercado Livre', color: 'bg-[#FFE600]' },
+              { value: 'magalu', label: 'Magalu', color: 'bg-[#0086FF]' },
+            ].map(f => (
+              <button key={f.value}
+                onClick={() => handleStoreFilter(f.value)}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                  storeFilter === f.value
+                    ? 'bg-slate-800 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthFromCookie } from '@/lib/auth'
 
@@ -8,13 +8,17 @@ async function checkAuth(): Promise<boolean> {
   return !!username
 }
 
-// GET /api/admin/offers — listar todas as ofertas
-export async function GET() {
+// GET /api/admin/offers — listar ofertas (filtro opcional por loja)
+export async function GET(request: NextRequest) {
   if (!(await checkAuth())) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
+  const store = request.nextUrl.searchParams.get('store') || ''
   try {
+    const where: any = {}
+    if (store) where.store = store
     const offers = await prisma.offer.findMany({
+      where,
       orderBy: { createdAt: 'desc' },
       take: 200,
     })
