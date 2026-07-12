@@ -15,13 +15,39 @@ export async function GET(request: NextRequest) {
   }
   const store = request.nextUrl.searchParams.get('store') || ''
   try {
-    const where: any = {}
-    if (store) where.store = store
-    const offers = await prisma.offer.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    })
+    if (store) {
+      // Filtro especifico — retorna ate 200 dessa loja
+      const offers = await prisma.offer.findMany({
+        where: { store },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      })
+      return NextResponse.json({ offers })
+    }
+
+    // "Todas" — busca 50 de cada loja e intercala
+    const allStores = ['mercadolivre', 'magalu', 'shopee', 'amazon']
+    const storeResults = await Promise.all(
+      allStores.map(s =>
+        prisma.offer.findMany({
+          where: { store: s },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        })
+      )
+    )
+
+    // Intercala: 1 de cada loja
+    const offers: any[] = []
+    let idx = 0
+    while (offers.length < 200 && idx < 50) {
+      for (const arr of storeResults) {
+        if (arr[idx]) offers.push(arr[idx])
+        if (offers.length >= 200) break
+      }
+      idx++
+    }
+
     return NextResponse.json({ offers })
   } catch (error) {
     console.error('Admin GET error:', error)
