@@ -22,44 +22,54 @@ const SYNONYMS: Record<string, string[]> = {
   maquiagem: ['maquiagem', 'make', 'base', 'batom', 'sombra'],
 }
 
-function expandQuery(query: string): string {
+function getSynonyms(query: string): string[] {
   const term = query.toLowerCase().trim()
-  // Check if exact match in synonyms
   for (const [key, synonyms] of Object.entries(SYNONYMS)) {
     if (term === key || synonyms.some(s => s.toLowerCase() === term)) {
-      // Return original term + all synonyms as OR
-      const allTerms = [key, ...synonyms]
-      return allTerms.join(' OR ')
+      return [key, ...synonyms]
     }
   }
-  return query
+  return [query]
 }
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl
 
   const rawQuery = searchParams.get('q') || ''
-  const query = expandQuery(rawQuery)
+  const synonyms = getSynonyms(rawQuery)
   const page = parseInt(searchParams.get('page') || '1', 10)
   const store = searchParams.get('store') || undefined
   const category = searchParams.get('category') || undefined
-  const minPrice = searchParams.get('minPrice')
-  const maxPrice = searchParams.get('maxPrice')
-  const minDiscount = searchParams.get('minDiscount')
-  const freeShipping = searchParams.get('freeShipping')
-
-  const filters = {
-    store,
-    category,
-    minPrice: minPrice ? parseFloat(minPrice) : undefined,
-    maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
-    minDiscount: minDiscount ? parseInt(minDiscount) : undefined,
-    freeShipping: freeShipping === '1' || freeShipping === 'true',
-  }
 
   try {
-    const data = await searchOffers(query, filters, page, 24)
-    return NextResponse.json(data)
+    // Busca cada sinonimo individualmente e combina resultados
+    const allOffers: any[] = []
+    const seen = new Set<string>()
+
+    for (const term of synonyms.slice(0, 6)) { // Limita a 6 buscas
+      const data = await searchOffers(term, { store, category }, 1, 12)
+      for (const offer of data.offers || []) {
+        const key = `${offer.store}|${offer.sourceId || offer.id}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          allOffers.push(offer)
+        }
+      }
+    }
+
+    // Paginate combined results
+    const pageSize = 24
+    const total = allOffers.length
+    const start = (page - 1) * pageSize
+    const paged = allOffers.slice(start, start + pageSize)
+
+    return NextResponse.json({
+      offers: paged,
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    })
   } catch (error) {
     console.error('Search error:', error)
     return NextResponse.json(
