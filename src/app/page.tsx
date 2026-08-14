@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { getHomeOffers, getStats } from '@/lib/fetcher'
+import { getHomeOffers, getStats, getHomeBlocks } from '@/lib/fetcher'
 import OfferSection from '@/components/OfferSection'
 import SwiperCarousel from '@/components/SwiperCarousel'
 import MobileAppLayoutV2 from '@/components/MobileAppLayoutV2'
@@ -22,9 +22,10 @@ export const metadata: Metadata = {
 }
 
 export default async function HomePage() {
-  const [data, stats] = await Promise.all([
+  const [data, stats, blocks] = await Promise.all([
     getHomeOffers().catch(() => ({ flashDeals: [] as any[], topOffers: [] as any[], recentOffers: [] as any[] })),
     getStats().catch(() => ({ totalOffers: 0, totalClicks: 0, stores: [] as { store: string; count: number }[] })),
+    getHomeBlocks().catch(() => ({ baratos: [] as any[], meio: [] as any[], maioresDescontos: [] as any[], menoresPrecos: [] as any[] })),
   ])
 
   const all = [...(data.flashDeals || []), ...(data.recentOffers || []), ...(data.topOffers || [])]
@@ -68,6 +69,11 @@ export default async function HomePage() {
             {/* MOBILE V2: layout completo */}
             <MobileAppLayoutV2 offers={carouselOffers} stats={stats} />
 
+            {/* MOBILE: blocos de alta conversão por preço */}
+            <div className="md:hidden space-y-6">
+              <HomePriceBlocks blocks={blocks} variant="mobile" />
+            </div>
+
             {/* DESKTOP: layout original preservado */}
             <div className="hidden md:block space-y-6">
               <SwiperCarousel offers={carouselOffers} />
@@ -91,6 +97,9 @@ export default async function HomePage() {
               />
             )}
 
+            {/* 💰 Blocos de alta conversão por faixa de preço */}
+            <HomePriceBlocks blocks={blocks} variant="desktop" />
+
             {/* Por loja — scroll horizontal */}
             <PorLoja all={all} />
             </div>{/* fecha hidden md:block desktop wrapper */}
@@ -101,6 +110,60 @@ export default async function HomePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+/** 💰 Blocos de alta conversão por faixa de preço (desktop + mobile) */
+function HomePriceBlocks({
+  blocks,
+  variant,
+}: {
+  blocks: { baratos: any[]; meio: any[]; maioresDescontos: any[]; menoresPrecos: any[] }
+  variant: 'desktop' | 'mobile'
+}) {
+  const scroll = variant === 'mobile' ? 'scroll' : 'scroll'
+  return (
+    <>
+      {blocks.baratos.length > 0 && (
+        <OfferSection
+          icon="💰"
+          title="Até R$ 50"
+          subtitle="Compre sem pesar no bolso"
+          offers={blocks.baratos}
+          layout={scroll as 'scroll'}
+          cta={{ label: 'Ver mais →', href: '/melhores-ofertas?max=50' }}
+        />
+      )}
+      {blocks.maioresDescontos.length > 0 && (
+        <OfferSection
+          icon="💸"
+          title="Maiores Descontos"
+          subtitle="Os menores preços reais agora"
+          offers={blocks.maioresDescontos}
+          layout={variant === 'mobile' ? 'scroll' : 'grid'}
+          cta={{ label: 'Ver mais →', href: '/melhores-ofertas' }}
+        />
+      )}
+      {blocks.menoresPrecos.length > 0 && (
+        <OfferSection
+          icon="📈"
+          title="Menores Preços da Semana"
+          subtitle="Os preços mais baixos monitorados"
+          offers={blocks.menoresPrecos}
+          layout={variant === 'mobile' ? 'scroll' : 'grid'}
+        />
+      )}
+      {blocks.meio.length > 0 && (
+        <OfferSection
+          icon="🛍️"
+          title="R$ 50 a R$ 300"
+          subtitle="Custo-benefício imbatível"
+          offers={blocks.meio}
+          layout={scroll as 'scroll'}
+          cta={{ label: 'Ver mais →', href: '/melhores-ofertas?min=50&max=300' }}
+        />
+      )}
+    </>
   )
 }
 

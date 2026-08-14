@@ -1,5 +1,6 @@
 import { prisma } from './prisma'
 import { getCached, setCache, invalidateCache } from './cache'
+import { deduplicateOffers } from './utils'
 
 // ═══════════════════════════════════════════════════════════
 // CATEGORIAS PRIORITARIAS — keywords para classificacao
@@ -134,6 +135,63 @@ export async function getHomeOffers(): Promise<{
   const data = { flashDeals, topOffers, recentOffers }
   const hasData = flashDeals.length > 0 || topOffers.length > 0 || recentOffers.length > 0
   if (hasData) setCache(cacheKey, data, 300)
+  return data
+}
+
+// ═══════════════════════════════════════════════════════════
+// HOME BLOCKS — blocos de alta conversão por faixa de preço
+// ═══════════════════════════════════════════════════════════
+
+export async function getHomeBlocks(): Promise<{
+  baratos: any[]
+  meio: any[]
+  maioresDescontos: any[]
+  menoresPrecos: any[]
+}> {
+  const cacheKey = 'home:blocks'
+  const cached = getCached<{ baratos: any[]; meio: any[]; maioresDescontos: any[]; menoresPrecos: any[] }>(cacheKey)
+  if (cached) return cached
+
+  const include = { priceHistory: { orderBy: { checkedAt: 'desc' as const }, take: 30 } }
+
+  const [baratos, meio, maioresDescontos, menoresPrecos] = await Promise.all([
+    // 💰 Até R$ 50 — impulso de compra
+    prisma.offer.findMany({
+      where: { price: { gt: 0, lte: 50 } },
+      orderBy: [{ discountPct: 'desc' }, { clicks: 'desc' }],
+      take: 60,
+      include,
+    }),
+    // 🛍️ R$ 50 – R$ 300 — ticket médio
+    prisma.offer.findMany({
+      where: { price: { gt: 50, lte: 300 } },
+      orderBy: [{ discountPct: 'desc' }, { clicks: 'desc' }],
+      take: 60,
+      include,
+    }),
+    // 💸 Maiores descontos — urgência
+    prisma.offer.findMany({
+      where: { price: { gt: 0 }, discountPct: { gte: 20 } },
+      orderBy: [{ discountPct: 'desc' }, { clicks: 'desc' }],
+      take: 60,
+      include,
+    }),
+    // 📈 Menores preços — descoberta
+    prisma.offer.findMany({
+      where: { price: { gt: 0 } },
+      orderBy: [{ price: 'asc' }, { clicks: 'desc' }],
+      take: 60,
+      include,
+    }),
+  ])
+
+  const data = {
+    baratos: deduplicateOffers(baratos as any),
+    meio: deduplicateOffers(meio as any),
+    maioresDescontos: deduplicateOffers(maioresDescontos as any),
+    menoresPrecos: deduplicateOffers(menoresPrecos as any),
+  }
+  setCache(cacheKey, data, 300)
   return data
 }
 
