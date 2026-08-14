@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { fetchAllDeals } from '@/lib/fetch-all-deals'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 /**
  * BATCHED FETCH — processa 1 loja, 1 lote por chamada.
@@ -10,7 +11,8 @@ export const dynamic = 'force-dynamic'
  * Header: Authorization: Bearer <CRON_SECRET>
  *
  * Cada lote processa ate 8 termos.
- * Timeout seguro para Vercel Hobby (10s).
+ * Sem ?batch=, o batch RODIZIA pelo dia do mês (cron diário cobre o
+ * catálogo inteiro da Magalu ao longo do mês sem precisar de estado).
  */
 
 const VALID_STORES = ['mercadolivre', 'magalu', 'shopee', 'amazon']
@@ -28,8 +30,11 @@ export async function GET(request: NextRequest) {
 
   // ── Params ──
   const store = request.nextUrl.searchParams.get('store') || ''
-  const batchStr = request.nextUrl.searchParams.get('batch') || '1'
-  const batch = parseInt(batchStr, 10)
+  const batchStr = request.nextUrl.searchParams.get('batch')
+  // Sem batch explícito: rotaciona pelo dia do mês (19 lotes de Magalu)
+  const batch = batchStr
+    ? parseInt(batchStr, 10)
+    : ((new Date().getUTCDate() - 1) % 19) + 1
 
   if (!store || !VALID_STORES.includes(store)) {
     return NextResponse.json({

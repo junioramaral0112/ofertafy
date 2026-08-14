@@ -1,12 +1,19 @@
 import type { AffiliateConfig } from '@/types'
 import { classifyProduct, calculatePromoScore } from '@/lib/utils'
 import { sanitizePricePair } from '@/lib/price-engine'
-import { mergeSearchTerms, validateOffer, calculateEnhancedScore } from '@/lib/offer-discovery'
+import { validateOffer, calculateEnhancedScore } from '@/lib/offer-discovery'
 
 /**
  * 🟡 MERCADO LIVRE SCRAPER
- * Extrai ofertas da /ofertas do ML com Score Promocional.
- * Captura selo FULL, desconto explícito, frete grátis, avaliações.
+ *
+ * ⚠️ IMPORTANTE (investigação 08/2026): o endpoint /search?q= retorna 404
+ * para scraper (até em navegador real nesta rede — página de erro
+ * lang="es-AR") e lista.mercadolivre.com.br redireciona para
+ * /gz/account-verification (detecção de bot).
+ *
+ * ✅ Estratégia atual: /ofertas PAGINADO (?page=1..N) — responde 200 com
+ * o JSON "items":[ no SSR, ~40 ofertas por página, sem repetição entre
+ * páginas. Captura selo FULL, desconto explícito, frete grátis.
  * Links com matt_tool=35888960 — sanitização robusta contra 404.
  */
 
@@ -24,51 +31,26 @@ interface RawOffer {
   scorePromocional?: number
 }
 
-// 40 categorias para busca massiva
-const ML_SEARCH_TERMS = [
-  'celular smartphone', 'notebook', 'tv smart', 'geladeira', 'fogao', 'maquina lavar',
-  'aspirador', 'cafeteira', 'air fryer', 'microondas', 'ventilador', 'ar condicionado',
-  'tenis masculino', 'tenis feminino', 'camiseta', 'calca jeans', 'vestido', 'bolsa feminina',
-  'mochila', 'relogio', 'perfume', 'creme hidratante', 'maquiagem', 'shampoo',
-  'furadeira', 'kit ferramentas', 'bicicleta', 'colchao', 'travesseiro', 'jogo cama',
-  'cadeira escritorio', 'mesa', 'monitor', 'teclado', 'mouse gamer', 'headset',
-  'ssd', 'memoria ram', 'placa mae', 'fonte', 'gabinete gamer',
-  'impressora', 'roteador', 'tablet', 'kindle', 'caixa som', 'soundbar',
-  'drone', 'camera', 'pneu', 'oleo motor', 'bebe brinquedo', 'pet racao',
-  'livro', 'panela', 'liquidificador', 'batedeira', 'ferro passar', 'purificador agua',
-  'guarda roupa', 'sofa', 'poltrona', 'tapete', 'cortina', 'luminaria',
-  // Novas categorias
-  'movel jardim', 'cadeira praia', 'cadeira jardim', 'barraca camping',
-  'saco dormir', 'lanterna camping', 'colchao inflavel', 'halter academia',
-  'bicicleta ergometrica', 'esteira', 'vara pesca', 'anzol',
-  'cadeira dobrável', 'guarda sol', 'espreiguicadeira',
-  // 🚀 Alta intenção — eletrônicos
-  'iphone', 'iphone 16', 'samsung galaxy', 'xiaomi redmi', 'motorola g',
-  'smart tv 4k', 'samsung tv', 'lg tv', 'tcl tv',
-  'airpods', 'smartwatch', 'apple watch',
-  'videogame', 'ps5', 'xbox series', 'nintendo switch',
-  'notebook gamer', 'notebook dell', 'notebook lenovo',
-  // 🏠 Casa
-  'geladeira frost free', 'fogao cooktop', 'robo aspirador',
-  'cafeteira nespresso',
-  // 👟 Moda
-  'tenis nike', 'tenis adidas', 'vestido festa',
-  'bolsa transversal', 'perfume importado',
-]
+const ML_OFFERS_PAGES = 12 // páginas por crawl (~40 ofertas cada, cabe no maxDuration 60s)
+const ML_OFFERS_DELAY_MS = 300
 
 export async function fetchMercadoLivreDeals(config: AffiliateConfig) {
   const all: RawOffer[] = []
   const seen = new Set<string>()
   const mattTool = config.mlMattTool || '35888960'
 
-  const allTerms = mergeSearchTerms(ML_SEARCH_TERMS, { includePromo: true, includePriority: true })
-  console.log('🟡 ML: iniciando busca massiva (' + allTerms.length + ' termos)')
+  console.log(`🟡 ML: buscando /ofertas paginado (${ML_OFFERS_PAGES} páginas) — /search?q= bloqueado`)
 
-  for (const term of allTerms) {
+  for (let page = 1; page <= ML_OFFERS_PAGES; page++) {
     try {
-      const url = `https://www.mercadolivre.com.br/search?q=${encodeURIComponent(term)}`
+      const url = `https://www.mercadolivre.com.br/ofertas?page=${page}`
       const res = await fetch(url, { headers: ML_HEADERS, signal: AbortSignal.timeout(15000) })
-      if (!res.ok) continue
+
+      if (!res.ok) {
+        if (page === 1) console.log(`   ⚠️ /ofertas HTTP ${res.status} — abortando crawl ML`)
+        break
+      }
+
       const html = await res.text()
       const offers = extractMLItems(html, mattTool)
 
@@ -82,11 +64,13 @@ export async function fetchMercadoLivreDeals(config: AffiliateConfig) {
           count++
         }
       }
-      if (count > 0) console.log(`   ${term}: ${count} ofertas`)
+
+      if (count === 0) break // fim da paginação ou página repetida
+      console.log(`   página ${page}: ${count} ofertas novas (total ${all.length})`)
     } catch (e: any) {
-      // Silencioso — continua próximo termo
+      // Silencioso — continua próxima página
     }
-    await new Promise(r => setTimeout(r, 300))
+    await new Promise(r => setTimeout(r, ML_OFFERS_DELAY_MS))
   }
 
   console.log(`🟡 ML total: ${all.length} ofertas (${seen.size} únicas)`)
@@ -97,34 +81,38 @@ export function extractMLItems(html: string, mattTool: string): RawOffer[] {
   const offers: RawOffer[] = []
   const seen = new Set<string>()
 
-  try {
-    // Encontrar o array "items":[ ... ]
-    const marker = '"items":['
-    const start = html.indexOf(marker)
-    if (start === -1) return offers
+  // ML pode ter vários arrays "items":[ no HTML (banners, carrosséis,
+  // produtos...). Varre TODOS e extrai dos que contêm produtos MLB reais
+  // (parseItem descarta os que não têm metadata.id MLB).
+  const marker = '"items":['
+  let searchFrom = 0
 
-    const arrayStart = start + marker.length - 1 // posicao do '['
+  while ((searchFrom = html.indexOf(marker, searchFrom)) !== -1) {
+    try {
+      const arrayStart = searchFrom + marker.length - 1 // posição do '['
 
-    // Balancear colchetes
-    let depth = 0, pos = arrayStart
-    while (pos < html.length) {
-      if (html[pos] === '[') depth++
-      else if (html[pos] === ']') { depth--; if (depth === 0) break }
-      pos++
-    }
-
-    const arrayStr = html.slice(arrayStart, pos + 1)
-    const items = JSON.parse(arrayStr)
-
-    for (const item of items) {
-      const offer = parseItem(item, mattTool)
-      if (offer && !seen.has(offer.sourceId)) {
-        seen.add(offer.sourceId)
-        offers.push(offer)
+      // Balancear colchetes
+      let depth = 0, pos = arrayStart
+      while (pos < html.length) {
+        if (html[pos] === '[') depth++
+        else if (html[pos] === ']') { depth--; if (depth === 0) break }
+        pos++
       }
+
+      const arrayStr = html.slice(arrayStart, pos + 1)
+      const items = JSON.parse(arrayStr)
+
+      for (const item of items) {
+        const offer = parseItem(item, mattTool)
+        if (offer && !seen.has(offer.sourceId)) {
+          seen.add(offer.sourceId)
+          offers.push(offer)
+        }
+      }
+    } catch (e) {
+      // Array que não é JSON válido — tenta o próximo
     }
-  } catch (e) {
-    console.error('ML parse error:', e)
+    searchFrom += marker.length
   }
 
   return offers
