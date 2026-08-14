@@ -247,15 +247,15 @@ function buildMagaluVoceOffer(
       installment = `12x R$ ${(price / 12).toFixed(2)}`
     }
 
-    // Construir URL do Magazine Voce
-    const mvUrl = productPath
-      ? `https://www.magazinevoce.com.br${productPath.startsWith('/') ? '' : '/'}${productPath}`
-      : `https://www.magazinevoce.com.br/magazine${storeId}/busca/produto/${id}`
+    // 🔒 ZERO TOLERÂNCIA: sem URL canônica do produto (path real) → descarta.
+    // A URL sintética /busca/produto/<id> foi removida — era link quebrado.
+    if (!productPath) return null
+    const mvUrl = `https://www.magazinevoce.com.br${productPath.startsWith('/') ? '' : '/'}${productPath}`
 
-    // Imagem: substituir placeholder {w}x{h} por 400x400
+    // 🔒 Imagem: só CDN oficial — sem placeholder (validateOffer rejeita vazia)
     const finalImage = imageUrl
       ? imageUrl.replace('{w}x{h}', '400x400')
-      : `https://picsum.photos/seed/magalu-${id}/400/400`
+      : ''
 
     // Categoria — usar a do produto ou mapear do termo de busca
     const catLabel = item.category?.label || category.charAt(0).toUpperCase() + category.slice(1)

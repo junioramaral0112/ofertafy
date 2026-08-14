@@ -11,6 +11,7 @@
 
 import { prisma } from './prisma'
 import { invalidateCache } from './cache'
+import { validateOffer } from './offer-discovery'
 import { fetchMercadoLivreDeals } from './affiliates/mercadolivre'
 import { fetchMagaluDeals } from './affiliates/magalu'
 import { fetchShopeeDeals } from './affiliates/shopee'
@@ -87,6 +88,14 @@ export async function fetchAllDeals(opts?: {
       try {
         if (!deal.sourceId || !deal.title) {
           errors.push(`Oferta invalida: ${JSON.stringify(deal).slice(0, 100)}`)
+          continue
+        }
+
+        // 🔒 GATE GLOBAL DE QUALIDADE — todo produto passa pelo validador
+        // central antes de tocar o banco (imagem CDN oficial + URL canônica)
+        const gate = validateOffer(deal)
+        if (!gate.valid) {
+          errors.push(`Qualidade rejeitada: ${gate.reason} — ${String(deal.title).slice(0, 60)}`)
           continue
         }
 

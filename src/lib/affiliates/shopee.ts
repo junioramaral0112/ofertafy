@@ -267,9 +267,8 @@ export function buildOffer(node: ProductOfferV2Node, affiliateId = '18355150568'
     const discountPct = pair.discountPct
 
     // ── Imagem ────────────────────────────────────────
-    const imageUrl =
-      node.imageUrl ||
-      `https://picsum.photos/seed/shopee-${itemId}/400/400`
+    // 🔒 ZERO TOLERÂNCIA: sem imagem real do CDN da Shopee → validateOffer rejeita
+    const imageUrl = node.imageUrl || ''
 
     // ── Categoria ─────────────────────────────────────
     const catName = 'Ofertas'

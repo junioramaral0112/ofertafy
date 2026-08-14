@@ -79,12 +79,93 @@ export const PRIORITY_TERMS = [
 ];
 
 // ═══════════════════════════════════════════════════════════
-// QUALITY VALIDATION — antes de salvar
+// QUALITY VALIDATION — política de qualidade ZERO TOLERÂNCIA
+// Todo produto passa por aqui antes de ir para o banco.
 // ═══════════════════════════════════════════════════════════
+
+/** Hosts de imagem genéricos/placeholder — PROIBIDOS em produção */
+const PLACEHOLDER_HOSTS = [
+  'picsum.photos', 'unsplash.com', 'placeholder.com', 'placehold.co',
+  'placehold.it', 'dummyimage.com', 'loremflickr.com', 'pexels.com',
+  'pixabay.com', 'gravatar.com', 'pravatar.cc',
+]
+
+/** CDNs oficiais de imagem por loja — só estes passam */
+const STORE_IMAGE_CDNS: Record<string, string[]> = {
+  amazon: ['media-amazon.com', 'images-amazon.com'],
+  mercadolivre: ['mlstatic.com'],
+  magalu: ['mlcdn.com.br', 'magazineluiza.com.br', 'magazinevoce.com.br'],
+  shopee: ['shopee.com.br', 'shopee.ph'],
+}
+
+/** Imagem nula/vazia/placeholder → true (rejeitar) */
+export function isPlaceholderImageUrl(imageUrl: string | null | undefined): boolean {
+  if (!imageUrl || imageUrl.trim().length < 10) return true
+  try {
+    const raw = imageUrl.startsWith('http') ? imageUrl : `https://${imageUrl}`
+    const host = new URL(raw).hostname.toLowerCase()
+    return PLACEHOLDER_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))
+  } catch {
+    return true // URL malformada também é rejeitada
+  }
+}
+
+/** Imagem só é aceita se vier do CDN oficial da loja */
+export function isAllowedStoreImage(store: string | null | undefined, imageUrl: string): boolean {
+  if (isPlaceholderImageUrl(imageUrl)) return false
+  try {
+    const raw = imageUrl.startsWith('http') ? imageUrl : `https://${imageUrl}`
+    const host = new URL(raw).hostname.toLowerCase()
+    const cdns = STORE_IMAGE_CDNS[store || '']
+    if (!cdns) return false // loja desconhecida → rejeita (zero tolerância)
+    return cdns.some((h) => host === h || host.endsWith(`.${h}`))
+  } catch {
+    return false
+  }
+}
+
+/**
+ * URL canônica e direta do PRODUTO no marketplace.
+ * Rejeita: URLs sintéticas (??), rotas de busca quebradas (/busca/,
+ * /search), URLs malformadas.
+ */
+export function isCanonicalProductUrl(store: string | null | undefined, url: string | null | undefined): boolean {
+  if (!url || !store) return false
+  const u = url.toLowerCase()
+  // Rejeições universais
+  if (u.includes('??') || u.includes('/busca/') || u.includes('/search?') || u.includes('/search/')) return false
+
+  let parsed: URL
+  try {
+    parsed = new URL(u)
+  } catch {
+    return false
+  }
+
+  const host = parsed.hostname
+  const path = parsed.pathname
+
+  switch (store) {
+    case 'amazon':
+      return host.endsWith('amazon.com.br') && (/\/dp\//.test(path) || /\/gp\//.test(path))
+    case 'mercadolivre':
+      // /p/MLB..., slug de produto ou /up/MLBU... (todos são URLs reais
+      // de produto emitidas pelo próprio ML)
+      return host.endsWith('mercadolivre.com.br') && path.length > 1
+    case 'magalu':
+      // magazinevoce.com.br/magazine<loja>/<slug-do-produto>
+      return host.endsWith('magazinevoce.com.br') && path.length > 1
+    case 'shopee':
+      // shopee.com.br/product/... ou short link oficial s.shopee.com.br
+      return (host.endsWith('shopee.com.br') || host === 's.shopee.com.br') && path.length > 1
+    default:
+      return false
+  }
+}
 
 export function validateOffer(offer: {
   title?: string; price?: number; originalPrice?: number;
-  imageUrl?: string; url?: string; discountPct?: number;
+  imageUrl?: string; url?: string; discountPct?: number; store?: string;
 }): { valid: boolean; reason?: string } {
   // Titulo: minimo 10 caracteres
   if (!offer.title || offer.title.length < 10) {
@@ -103,13 +184,16 @@ export function validateOffer(offer: {
   if (offer.originalPrice && offer.originalPrice < offer.price) {
     return { valid: false, reason: "preco original inconsistente" };
   }
-  // URL deve conter dominio valido
-  if (!offer.url || (!offer.url.includes("mercadolivre") && !offer.url.includes("shopee") && !offer.url.includes("magazine") && !offer.url.includes("amazon"))) {
-    return { valid: false, reason: "url invalida" };
+  // 🔒 URL: link direto e canônico do produto (sem /busca/, ??, search)
+  if (!isCanonicalProductUrl(offer.store, offer.url)) {
+    return { valid: false, reason: "url nao-canonica do produto" };
   }
-  // Imagem deve existir
-  if (!offer.imageUrl || offer.imageUrl.length < 10) {
-    return { valid: false, reason: "sem imagem" };
+  // 🔒 IMAGEM: nunca placeholder genérico — só CDN oficial da loja
+  if (isPlaceholderImageUrl(offer.imageUrl)) {
+    return { valid: false, reason: "imagem placeholder generica" };
+  }
+  if (!isAllowedStoreImage(offer.store, offer.imageUrl!)) {
+    return { valid: false, reason: "imagem fora do CDN oficial da loja" };
   }
   return { valid: true };
 }

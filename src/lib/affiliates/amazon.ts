@@ -272,7 +272,8 @@ export async function scrapeAmazonPage(
           sourceId: `amazon-${p.asin}`,
           title: p.title.slice(0, 250),
           description: null,
-          imageUrl: p.imageUrl || `https://picsum.photos/seed/amazon-${p.asin}/400/400`,
+          // 🔒 ZERO TOLERÂNCIA: sem imagem real do CDN da Amazon → validateOffer rejeita
+          imageUrl: p.imageUrl,
           price,
           originalPrice: pair.originalPrice ?? price,
           discountPct: pair.discountPct,
