@@ -3,8 +3,13 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import OfferCard from '@/components/OfferCard'
 import Breadcrumbs from '@/components/Breadcrumbs'
+import SearchFilters from '@/components/SearchFilters'
+import { rankOffers, getMatchTerms, getIntentExpansion } from '@/lib/search-ranking'
 
-type Props = { params: Promise<{ query: string }> }
+type Props = {
+  params: Promise<{ query: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { query } = await params
@@ -37,20 +42,104 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function BuscaLandingPage({ params }: Props) {
+export default async function BuscaLandingPage({ params, searchParams }: Props) {
   const { query } = await params
+  const sp = await searchParams
+
   const term = decodeURIComponent(query).replace(/-/g, ' ').trim()
   const searchWords = term.split(/\s+/).filter((w) => w.length > 1)
 
-  // Buscar ofertas
-  let offers: any[] = []
-  if (searchWords.length > 0) {
-    offers = await prisma.offer.findMany({
-      where: {
-        OR: searchWords.map((w) => ({ title: { contains: w, mode: 'insensitive' as const } })),
-      },
+  // ── Filtros da URL (?loja= / ?min= / ?max= / ?marca=) ──
+  const storeFilter = typeof sp.loja === 'string' && sp.loja ? sp.loja : undefined
+  const minPrice = typeof sp.min === 'string' && sp.min !== '' ? parseFloat(sp.min) : undefined
+  const maxPrice = typeof sp.max === 'string' && sp.max !== '' ? parseFloat(sp.max) : undefined
+  const brandFilter = (typeof sp.marca === 'string' ? sp.marca.split(',') : [])
+    .map((b) => b.trim())
+    .filter(Boolean)
+
+  const titleClause = (w: string) => ({ title: { contains: w, mode: 'insensitive' as const } })
+
+  // Where builder: termos de match + filtros (loja, preço, marca)
+  const buildWhere = (terms: string[], withBrands = true): Record<string, unknown> => {
+    const w: Record<string, unknown> = {}
+    if (terms.length > 0) {
+      if (withBrands && brandFilter.length > 0) {
+        w.AND = [{ OR: terms.map(titleClause) }, { OR: brandFilter.map(titleClause) }]
+      } else {
+        w.OR = terms.map(titleClause)
+      }
+    }
+    if (storeFilter) w.store = storeFilter
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      const price: Record<string, number> = {}
+      if (minPrice !== undefined && !isNaN(minPrice)) price.gte = minPrice
+      if (maxPrice !== undefined && !isNaN(maxPrice)) price.lte = maxPrice
+      w.price = price
+    }
+    return w
+  }
+
+  // Termos de MATCH = palavras da query + expansão de intenção
+  // (celular → smartphone/galaxy/iphone… | tv → smart tv/oled/qled/4k…)
+  const matchTerms = getMatchTerms(term)
+  const where = buildWhere(matchTerms)
+
+  // ── Pool de ofertas em 2 fases (ranqueadas pelo search-ranking) ──
+  // Fase 1: match geral (inclui acessórios — serão demoted pelo ranking)
+  // Fase 2: APARELHOS reais (termos de expansão) — garante celulares/TVs
+  // no pool mesmo com 0 cliques (o orderBy por cliques deixa tudo empatado
+  // em bases novas e exclui aparelhos arbitrariamente).
+  let pool: any[] = []
+  if (matchTerms.length > 0) {
+    pool = await prisma.offer.findMany({
+      where: where as any,
       orderBy: { discountPct: 'desc' },
-      take: 24,
+      take: 300,
+    })
+
+    const expansion = getIntentExpansion(term)
+    if (expansion.length > 0) {
+      const deviceWhere = buildWhere([...expansion.filter((e) => e.length > 1)])
+      const devices = await prisma.offer.findMany({
+        where: deviceWhere as any,
+        orderBy: { discountPct: 'desc' },
+        take: 200,
+      })
+      const seenIds = new Set(pool.map((o) => o.id))
+      for (const d of devices) {
+        if (!seenIds.has(d.id)) {
+          seenIds.add(d.id)
+          pool.push(d)
+        }
+      }
+    }
+  }
+  const offers = rankOffers(pool, term).slice(0, 24)
+
+  // Contagem total com filtros (para o texto do header)
+  const filteredTotal = matchTerms.length > 0
+    ? await prisma.offer.count({ where: where as any })
+    : 0
+
+  // Contagens por loja (sem filtro de loja — para o painel)
+  let storeCounts: Record<string, number> = {}
+  if (matchTerms.length > 0) {
+    const groups = await prisma.offer.groupBy({
+      by: ['store'],
+      where: buildWhere(matchTerms, false) as any,
+      _count: true,
+    })
+    storeCounts = Object.fromEntries(groups.map((g) => [g.store, g._count]))
+  }
+
+  // Pool leve (só títulos) para extrair marcas disponíveis (sem filtros)
+  let brandPool: Array<{ title: string }> = []
+  if (matchTerms.length > 0) {
+    brandPool = await prisma.offer.findMany({
+      where: buildWhere(matchTerms, false) as any,
+      select: { title: true },
+      orderBy: { discountPct: 'desc' },
+      take: 400,
     })
   }
 
@@ -64,6 +153,7 @@ export default async function BuscaLandingPage({ params }: Props) {
     : []
 
   const termCapitalized = capitalize(term)
+  const hasActiveFilters = !!storeFilter || minPrice !== undefined || brandFilter.length > 0
 
   return (
     <div className="bg-slate-50 min-h-screen">
@@ -82,8 +172,8 @@ export default async function BuscaLandingPage({ params }: Props) {
           <p className="text-slate-600 text-sm leading-relaxed mb-4">
             Confira as melhores ofertas de <strong>{term}</strong> no Mercado Livre, Amazon, Shopee e Magalu.
             Comparamos preços em tempo real para você economizar.
-            {offers.length > 0 && (
-              <> Encontramos <strong>{offers.length} ofertas</strong> de {term} com descontos de até {Math.max(...offers.map((o: any) => o.discountPct))}%.</>
+            {filteredTotal > 0 && (
+              <> Encontramos <strong>{filteredTotal} ofertas</strong> de {term}{hasActiveFilters && ' com os filtros selecionados'} com descontos de até {Math.max(...offers.map((o: any) => o.discountPct))}%.</>
             )}
           </p>
 
@@ -99,23 +189,41 @@ export default async function BuscaLandingPage({ params }: Props) {
           }} />
         </div>
 
-        {/* Resultados */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4 mb-10">
-          {offers.map((offer: any) => <OfferCard key={offer.id} offer={offer} />)}
+        {/* Layout com filtros (sidebar no desktop, colapsáveis no mobile) */}
+        <div className="lg:flex lg:gap-5">
+          <SearchFilters
+            basePath={`/busca/${query}`}
+            current={{ store: storeFilter, min: minPrice, max: maxPrice, brands: brandFilter }}
+            storeCounts={storeCounts}
+            offers={brandPool}
+          />
+
+          {/* Resultados */}
+          <div className="flex-1 min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 mb-10">
+              {offers.map((offer: any) => <OfferCard key={offer.id} offer={offer} />)}
+            </div>
+
+            {offers.length === 0 && (
+              <div className="text-center py-12">
+                <span className="text-5xl mb-4 block">🔍</span>
+                <p className="text-slate-500">
+                  {hasActiveFilters
+                    ? `Nenhuma oferta encontrada para "${term}" com os filtros selecionados.`
+                    : `Nenhuma oferta encontrada para "${term}".`}
+                </p>
+                {hasActiveFilters && (
+                  <Link href={`/busca/${query}`} className="text-primary text-sm mt-2 inline-block hover:underline">
+                    Limpar filtros →
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
-        {offers.length === 0 && (
-          <div className="text-center py-12">
-            <span className="text-5xl mb-4 block">🔍</span>
-            <p className="text-slate-500">Nenhuma oferta encontrada para &quot;{term}&quot;.</p>
-            <Link href="/busca" className="text-primary text-sm mt-2 inline-block hover:underline">
-              Tentar outra busca →
-            </Link>
-          </div>
-        )}
-
         {/* Conteúdo SEO adicional */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6 mt-10">
           <h2 className="text-lg font-bold text-slate-900 mb-3">📊 Guia de Compra: {termCapitalized}</h2>
           <div className="prose prose-slate max-w-none text-sm text-slate-600 space-y-2">
             <p>
