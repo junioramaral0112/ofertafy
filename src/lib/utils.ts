@@ -2,6 +2,8 @@
 // 🔒 URL À PROVA DE BALA
 // ═══════════════════════════════════════════════════════════
 
+import { normalizeBrazilianPrice } from './price-engine'
+
 /**
  * Retorna SEMPRE uma URL base válida com protocolo https://.
  * PRIORIDADE: env > fallback hardcoded.
@@ -222,34 +224,12 @@ export function formatPrice(value: number): string {
  * Converte string de preço brasileira para número decimal.
  * Ex: "R$ 8.890,00" → 8890.0 | "R$ 1.162,99" → 1162.99
  *     "8.890" → 8890 | "44,90" → 44.9 | "10.50" → 10.5
+ *
+ * ⚠️ Delega ao PRICE EXTRACTION ENGINE (src/lib/price-engine.ts) —
+ * única fonte de verdade para normalização de preços.
  */
 export function sanitizePrice(priceStr: string | null | undefined): number {
-  if (!priceStr) return 0
-
-  // 1. Remove símbolos de moeda (R$), espaços e quebras de linha
-  let cleanStr = priceStr.replace(/[R$\s]/g, '').trim()
-
-  // 2. Se a string contiver pontos e vírgula (Ex: "2.399,00" ou "3.149,10")
-  if (cleanStr.includes('.') && cleanStr.includes(',')) {
-    // Remove TODOS os pontos de milhar e substitui a vírgula por ponto decimal
-    cleanStr = cleanStr.replace(/\./g, '').replace(',', '.')
-  }
-  // 3. Se contiver APENAS vírgula (Ex: "49,90")
-  else if (cleanStr.includes(',')) {
-    cleanStr = cleanStr.replace(',', '.')
-  }
-  // 4. Se contiver APENAS ponto (Ex: "2.399" vindo da Amazon sem os centavos do seletor)
-  else if (cleanStr.includes('.')) {
-    const partes = cleanStr.split('.')
-    // Se após o ponto existirem exatamente 3 dígitos, é ponto de milhar (Ex: 2.399 -> 2399)
-    if (partes[1] && partes[1].length === 3) {
-      cleanStr = cleanStr.replace(/\./g, '')
-    }
-    // Se tiver 1 ou 2 dígitos, já era ponto decimal padrão (Ex: 10.5 ou 99.99)
-  }
-
-  const finalPrice = parseFloat(cleanStr)
-  return isNaN(finalPrice) ? 0 : finalPrice
+  return normalizeBrazilianPrice(priceStr)
 }
 
 export function calculateDiscount(original: number, current: number): number {

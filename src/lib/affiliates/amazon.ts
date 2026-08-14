@@ -1,5 +1,5 @@
 import type { AffiliateConfig } from '@/types'
-import { sanitizePrice } from '@/lib/utils'
+import { extractMainProductPrice } from '@/lib/price-engine'
 import { mergeSearchTerms, validateOffer } from '@/lib/offer-discovery'
 
 /**
@@ -123,7 +123,7 @@ export async function fetchAmazonDeals(config: AffiliateConfig) {
   return all
 }
 
-async function scrapeAmazonPage(
+export async function scrapeAmazonPage(
   browser: any,
   url: string,
   affiliateTag: string
@@ -162,8 +162,9 @@ async function scrapeAmazonPage(
     // Extrair produtos do DOM renderizado
     const products = await page.evaluate(() => {
       const results: Array<{
-        asin: string; title: string; priceText: string; oldPriceText: string
-        imageUrl: string; discountPct: number; productUrl: string
+        asin: string; title: string
+        imageUrl: string; productUrl: string
+        priceBlocks: Array<{ text: string; blockText: string; parentText: string; isStrike: boolean }>
       }> = []
 
       // Seletores da Amazon para cards de produto
@@ -193,34 +194,50 @@ async function scrapeAmazonPage(
           const title = titleEl?.textContent?.trim() || ''
           if (!title || title.length < 5) continue
 
-          // Preco atual — usa .a-offscreen que traz o valor completo (ex: "R$ 8.890,00")
-          const priceEl = card.querySelector('.a-price .a-offscreen')
-          const priceText = priceEl?.textContent?.trim() || ''
+          // ⚠️ PRICE EXTRACTION ENGINE — captura TODOS os blocos .a-price do
+          // card (preço principal, preço riscado E preço por unidade como
+          // "(R$ 3.390,00 / kg)") e deixa a classificação para o engine.
+          // Nunca confiar no primeiro/último .a-offscreen isoladamente.
+          //
+          // IMPORTANTE: o contexto usado é o texto do ELEMENTO PAI — o
+          // indicador "/kg" do preço por unidade fica FORA do bloco .a-price
+          // (ex: <span>…</span> com texto "(R$ 9.900,00R$9.900,00/kg)").
+          const priceBlocks = [...card.querySelectorAll('.a-price')].map((el) => {
+            const offscreen = el.querySelector('.a-offscreen')
+            const parent = el.parentElement as HTMLElement | null
+            return {
+              text: offscreen?.textContent?.trim() || '',
+              blockText: (el.textContent || '').trim(),
+              parentText: (parent?.textContent || '').trim(),
+              isStrike: !!el.closest('[data-a-strike="true"]') || el.getAttribute('data-a-strike') === 'true',
+            }
+          })
 
-          // Preco original (riscado)
-          const oldPriceEl = card.querySelector('.a-text-price .a-offscreen, [data-a-strike="true"] .a-offscreen')
-          const oldPriceText = oldPriceEl?.textContent?.trim() || ''
+          // Blocos riscados fora de .a-price (ex: link "De: R$ X")
+          const strikeExtras = [...card.querySelectorAll('[data-a-strike="true"]')]
+            .filter((el) => !el.closest('.a-price'))
+            .map((el) => {
+              const parent = el.parentElement as HTMLElement | null
+              return {
+                text: el.querySelector('.a-offscreen')?.textContent?.trim() || '',
+                blockText: (el.textContent || '').trim(),
+                parentText: (parent?.textContent || '').trim(),
+                isStrike: true,
+              }
+            })
 
           // Imagem
           const imgEl = card.querySelector('img.s-image, img[src*="media-amazon"]')
           const imageUrl = imgEl?.getAttribute('src') || ''
 
-          // Desconto
-          const discountEl = card.querySelector('.savingsPercentage, .a-color-price')
-          const discountText = discountEl?.textContent?.trim() || ''
-          const discountMatch = discountText.match(/(\d+)/)
-          const discountPct = discountMatch ? parseInt(discountMatch[1]) : 0
-
-          // Precisa ao menos ter um preco
-          if (!priceText && !oldPriceText) continue
+          // Precisa ao menos ter um bloco de preco
+          if (priceBlocks.length === 0 && strikeExtras.length === 0) continue
 
           results.push({
             asin,
             title,
-            priceText,
-            oldPriceText,
+            priceBlocks: [...priceBlocks, ...strikeExtras],
             imageUrl,
-            discountPct,
             productUrl: `https://www.amazon.com.br/dp/${asin}`,
           })
         } catch { /* skip card */ }
@@ -229,27 +246,36 @@ async function scrapeAmazonPage(
       return results
     })
 
-    // Converter para RawOffer aplicando sanitizePrice
-    const typed = products as Array<{ asin: string; title: string; priceText: string; oldPriceText: string; imageUrl: string; discountPct: number; productUrl: string }>
+    // Converter para RawOffer via PRICE EXTRACTION ENGINE
+    const typed = products as Array<{
+      asin: string; title: string; imageUrl: string; productUrl: string
+      priceBlocks: Array<{ text: string; blockText: string; parentText: string; isStrike: boolean }>
+    }>
     return typed
       .filter((p) => p.title && p.asin)
       .map((p) => {
-        const price = sanitizePrice(p.priceText)
-        const oldPrice = sanitizePrice(p.oldPriceText)
-        const finalOldPrice = oldPrice > price ? oldPrice : Math.round(price * 1.35 * 100) / 100
-        const discountPct = p.discountPct > 0 ? p.discountPct
-          : (finalOldPrice > price ? Math.round(((finalOldPrice - price) / finalOldPrice) * 100) : 0)
+        // Pipeline centralizado: rejeita preço por kg/L/unidade e parcela,
+        // distingue preço principal de preço original (riscado).
+        const pair = extractMainProductPrice(
+          p.priceBlocks.map((b, i) => ({
+            text: b.text,
+            context: b.parentText || b.blockText,
+            role: b.isStrike ? 'original' : 'unknown',
+            source: `amazon .a-price#${i + 1}${b.isStrike ? ' (riscado)' : ''}`,
+          }))
+        )
 
-        if (price <= 0) return null // Aceita todos produtos com preço válido
+        const price = pair.price
+        if (!price || price <= 0) return null // Sem preço principal confiável → descarta
 
-        return {
+        const offer = {
           sourceId: `amazon-${p.asin}`,
           title: p.title.slice(0, 250),
           description: null,
           imageUrl: p.imageUrl || `https://picsum.photos/seed/amazon-${p.asin}/400/400`,
           price,
-          originalPrice: finalOldPrice,
-          discountPct,
+          originalPrice: pair.originalPrice ?? price,
+          discountPct: pair.discountPct,
           url: `https://www.amazon.com.br/dp/${p.asin}?tag=${affiliateTag}`,
           store: 'amazon',
           storeLabel: 'Amazon',
@@ -258,6 +284,12 @@ async function scrapeAmazonPage(
           installment: `12x R$ ${(price / 12).toFixed(2)}`,
           freeShipping: price > 100,
         }
+
+        // Validação central (mesma dos outros scrapers — antes a Amazon pulava)
+        const validation = validateOffer(offer)
+        if (!validation.valid) return null
+
+        return offer
       })
       .filter(Boolean) as RawOffer[]
   } finally {

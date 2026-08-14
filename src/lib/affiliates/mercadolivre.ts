@@ -1,5 +1,6 @@
 import type { AffiliateConfig } from '@/types'
 import { classifyProduct, calculatePromoScore } from '@/lib/utils'
+import { sanitizePricePair } from '@/lib/price-engine'
 import { mergeSearchTerms, validateOffer, calculateEnhancedScore } from '@/lib/offer-discovery'
 
 /**
@@ -92,7 +93,7 @@ export async function fetchMercadoLivreDeals(config: AffiliateConfig) {
   return all
 }
 
-function extractMLItems(html: string, mattTool: string): RawOffer[] {
+export function extractMLItems(html: string, mattTool: string): RawOffer[] {
   const offers: RawOffer[] = []
   const seen = new Set<string>()
 
@@ -129,7 +130,7 @@ function extractMLItems(html: string, mattTool: string): RawOffer[] {
   return offers
 }
 
-function parseItem(item: any, mattTool: string): RawOffer | null {
+export function parseItem(item: any, mattTool: string): RawOffer | null {
   try {
     const meta = item.card?.metadata
     if (!meta?.id?.startsWith('MLB')) return null
@@ -172,17 +173,14 @@ function parseItem(item: any, mattTool: string): RawOffer | null {
         title = comp.title.text
       }
 
-      // Preco
+      // Preco (valores estruturados do JSON do ML — current_price é o preço
+      // principal de compra; previous_price é o preço original riscado)
       if (type === 'price' && comp.price) {
         const cp = comp.price.current_price?.value
         const pp = comp.price.previous_price?.value
-        const dp = comp.price.discount_percentage
 
         if (cp) price = typeof cp === 'number' ? cp : parseFloat(cp)
         if (pp) originalPrice = typeof pp === 'number' ? pp : parseFloat(pp)
-        if (dp && typeof dp === 'string') {
-          discountPct = parseInt(dp.replace('%', ''))
-        }
       }
 
       // Frete gratis
@@ -200,20 +198,26 @@ function parseItem(item: any, mattTool: string): RawOffer | null {
       }
     }
 
-    // Calcular desconto se não veio no componente
-    if (discountPct === 0 && originalPrice > price) {
-      discountPct = Math.round(((originalPrice - price) / originalPrice) * 100)
-    }
-    if (originalPrice <= price) {
-      originalPrice = Math.round(price * 1.35 * 100) / 100
-      discountPct = Math.round(((originalPrice - price) / originalPrice) * 100)
-    }
+    // ⚠️ PRICE EXTRACTION ENGINE — valida o par e NUNCA fabrica desconto:
+    // sem preço original real (previous_price), originalPrice = price e
+    // discountPct = 0 (o antigo 1.35x criava descontos falsos no ranking).
+    const pair = sanitizePricePair(price, originalPrice > price ? originalPrice : null)
+    price = pair.price ?? 0
+    originalPrice = pair.originalPrice ?? 0
+    discountPct = pair.discountPct
 
     // Detectar selos promocionais do ML
     const isFull = item.card?.tags?.some?.((t: any) => t?.type === 'FULL') ?? false
     const isBestSeller = item.card?.tags?.some?.((t: any) => t?.type === 'BEST_SELLER') ?? false
 
     if (!title || price <= 0) return null
+
+    // Imagem
+    const pictures = item.card?.pictures?.pictures || []
+    const imgId = pictures[0]?.id || ''
+    const imageUrl = imgId
+      ? `https://http2.mlstatic.com/D_NQ_NP_${imgId}-F.webp`
+      : `https://http2.mlstatic.com/D_NQ_NP_${productId || id}-F.webp`
 
     // ⭐ Score promocional (enhanced)
     const scorePromocional = calculateEnhancedScore({
@@ -226,13 +230,6 @@ function parseItem(item: any, mattTool: string): RawOffer | null {
       titleQuality: title.length > 30 ? 0.9 : 0.5,
       imageQuality: imageUrl ? 0.8 : 0,
     })
-
-    // Imagem
-    const pictures = item.card?.pictures?.pictures || []
-    const imgId = pictures[0]?.id || ''
-    const imageUrl = imgId
-      ? `https://http2.mlstatic.com/D_NQ_NP_${imgId}-F.webp`
-      : `https://http2.mlstatic.com/D_NQ_NP_${productId || id}-F.webp`
 
     // 🧠 Categorização inteligente
     const catResult = classifyProduct(title, price, category)

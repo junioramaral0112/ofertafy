@@ -98,8 +98,9 @@ export function validateOffer(offer: {
   if (offer.discountPct && offer.discountPct > 90) {
     return { valid: false, reason: "desconto suspeito" };
   }
-  // Preco original deve ser maior que o atual (se existir)
-  if (offer.originalPrice && offer.originalPrice <= offer.price) {
+  // Preco original deve ser maior que o atual (igual = sem desconto real,
+  // permitido desde o Price Extraction Engine — descontos não são fabricados)
+  if (offer.originalPrice && offer.originalPrice < offer.price) {
     return { valid: false, reason: "preco original inconsistente" };
   }
   // URL deve conter dominio valido

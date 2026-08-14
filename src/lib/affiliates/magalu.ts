@@ -1,5 +1,5 @@
 import type { AffiliateConfig } from '@/types'
-import { sanitizePrice } from '@/lib/utils'
+import { normalizeBrazilianPrice, sanitizePricePair } from '@/lib/price-engine'
 import { mergeSearchTerms, validateOffer } from '@/lib/offer-discovery'
 
 /**
@@ -104,7 +104,7 @@ export async function fetchMagaluDeals(config: AffiliateConfig, batchOpts?: { ba
   return unique
 }
 
-function extractFromNextData(html: string, storeId: string, category: string): RawOffer[] {
+export function extractFromNextData(html: string, storeId: string, category: string): RawOffer[] {
   const offers: RawOffer[] = []
 
   try {
@@ -209,33 +209,30 @@ function buildMagaluVoceOffer(
 
     // Preco — o Magalu aninha em um objeto: { price, fullPrice, bestPrice, discount }
     let price = 0
-    let originalPrice = 0
-    let discountPct = 0
+    let originalCandidate: number | null = null
 
     if (typeof item.price === 'object' && item.price !== null) {
       // Formato Magazine Voce: { price: '1199.00', fullPrice: '887.78', bestPrice: '799.00', discount: '10.00' }
-      const bestPrice = sanitizePrice(item.price.bestPrice || item.price.fullPrice || '0')
-      const listPrice = sanitizePrice(item.price.price || '0')
-      const discount = parseFloat(item.price.discount || '0')
+      // bestPrice = preço principal de compra; price = preço de lista (riscado)
+      const bestPrice = normalizeBrazilianPrice(item.price.bestPrice || item.price.fullPrice || '0')
+      const listPrice = normalizeBrazilianPrice(item.price.price || '0')
 
       price = bestPrice || listPrice || 0
-      originalPrice = listPrice > bestPrice ? listPrice : listPrice || Math.round(bestPrice * 1.3 * 100) / 100
-      discountPct = discount || (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0)
+      originalCandidate = listPrice > bestPrice && listPrice > 0 ? listPrice : null
     } else if (typeof item.price === 'number' && item.price > 0) {
       price = item.price
-      originalPrice = item.listPrice || item.oldPrice || item.originalPrice || 0
+      originalCandidate = item.listPrice || item.oldPrice || item.originalPrice || null
     } else {
       // Sem preco — pular
       return null
     }
 
-    if (price <= 0) return null
-
-    // Se nao tem originalPrice via listPrice, estimar
-    if (originalPrice <= price) {
-      originalPrice = Math.round(price * 1.30 * 100) / 100
-      discountPct = Math.round(((originalPrice - price) / originalPrice) * 100)
-    }
+    // ⚠️ PRICE EXTRACTION ENGINE — valida e NUNCA fabrica desconto (sem 1.30x)
+    const pair = sanitizePricePair(price, originalCandidate)
+    if (!pair.price || pair.price <= 0) return null
+    price = pair.price
+    const originalPrice = pair.originalPrice ?? 0
+    const discountPct = pair.discountPct
 
     // Aceita todos os produtos (sem filtro de desconto mínimo)
 

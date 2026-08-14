@@ -1,5 +1,5 @@
 import type { AffiliateConfig } from '@/types'
-import { sanitizePrice } from '@/lib/utils'
+import { normalizeBrazilianPrice, sanitizePricePair } from '@/lib/price-engine'
 import crypto from 'crypto'
 import { mergeSearchTerms, validateOffer, calculateEnhancedScore } from '@/lib/offer-discovery'
 
@@ -239,7 +239,7 @@ async function fetchProductPage(
 // Monta RawOffer a partir de ProductOfferV2
 // ---------------------------------------------------------------------------
 
-function buildOffer(node: ProductOfferV2Node): RawOffer | null {
+export function buildOffer(node: ProductOfferV2Node, affiliateId = '18355150568'): RawOffer | null {
   try {
     const itemId = node.itemId
     const shopId = node.shopId
@@ -249,30 +249,22 @@ function buildOffer(node: ProductOfferV2Node): RawOffer | null {
 
     // ── Preço ──────────────────────────────────────────
     // Preços são String no schema (ex: "1899.00")
-    const price = sanitizePrice(node.price)
-    const priceMin = sanitizePrice(node.priceMin)
-    const priceMax = sanitizePrice(node.priceMax)
-
+    // price = preço principal de compra (valor com desconto da API)
+    const price = normalizeBrazilianPrice(node.price)
     if (price <= 0) return null
 
-    // Preço original: usa priceMax (antes do desconto) ou estima
-    let originalPrice = priceMax > price ? priceMax : 0
-    let discountPct = node.priceDiscountRate ?? 0
+    // priceMax é o preço máximo das VARIAÇÕES — só é aceito como preço
+    // original quando a API declara desconto real (priceDiscountRate > 0).
+    // Sem isso, não fabricamos desconto (o antigo 1.35x era falso).
+    const priceMax = normalizeBrazilianPrice(node.priceMax)
+    const declaredDiscount = node.priceDiscountRate ?? 0
+    const originalCandidate = declaredDiscount > 0 && priceMax > price ? priceMax : null
 
-    if (discountPct <= 0 && originalPrice > price && price > 0) {
-      discountPct = Math.round(((originalPrice - price) / originalPrice) * 100)
-    }
-    if (originalPrice <= price) {
-      originalPrice = Math.round(price * 1.35 * 100) / 100
-      discountPct = Math.round(((originalPrice - price) / originalPrice) * 100)
-    }
-
-    // Aceita todos os produtos (sem filtro de desconto mínimo)
-    // ═══════════════════════════════════════════════
-    // 🔒 SANITIZE PRICE (formato idêntico ao banco)
-    // ═══════════════════════════════════════════════
-    const finalPrice = sanitizePrice(String(price))
-    const finalOriginalPrice = sanitizePrice(String(originalPrice))
+    // ⚠️ PRICE EXTRACTION ENGINE — validação centralizada do par
+    const pair = sanitizePricePair(price, originalCandidate)
+    const finalPrice = pair.price ?? 0
+    const finalOriginalPrice = pair.originalPrice ?? 0
+    const discountPct = pair.discountPct
 
     // ── Imagem ────────────────────────────────────────
     const imageUrl =
@@ -285,10 +277,11 @@ function buildOffer(node: ProductOfferV2Node): RawOffer | null {
 
     // ── Link de afiliado ──────────────────────────────
     // offerLink já vem com tracking da API. Fallback: productLink
+    // (corrigido: buildOffer não recebe `config` — usa o affiliateId do chamador)
     const affiliateUrl =
       node.offerLink ||
       node.productLink ||
-      `https://shopee.com.br/product/${shopId}/${itemId}?affiliate_id=${config.shopeeAppId || '18355150568'}`
+      `https://shopee.com.br/product/${shopId}/${itemId}?affiliate_id=${affiliateId}`
 
     // 🔒 Rejeitar ofertas sem affiliate_id
     if (affiliateUrl && !affiliateUrl.includes('affiliate_id=') && !affiliateUrl.includes('s.shopee.com.br')) {
@@ -355,7 +348,7 @@ export async function fetchShopeeDeals(config: AffiliateConfig) {
         if (nodes.length === 0) break
 
         for (const node of nodes) {
-          const offer = buildOffer(node)
+          const offer = buildOffer(node, config.shopeeAppId || undefined)
           if (offer && !seen.has(offer.sourceId)) {
             const validation = validateOffer(offer)
             if (!validation.valid) continue
